@@ -3,46 +3,6 @@ const REGION = "us-east-1"; // change to your AWS region
 const BUCKET_NAME = "cs-notesfiles"; // your S3 bucket name
 const IDENTITY_POOL_ID = "YOUR_IDENTITY_POOL_ID"; // from Cognito
 
-        document.getElementById("fileInput").addEventListener("change", async (event) => {
-          const file = event.target.files[0];
-          if (!file) return;
-        
-          // Get user identity from Cognito
-          const credentials = awsCognitoIdentity.fromCognitoIdentityPool({
-            clientConfig: { region: REGION },
-            identityPoolId: IDENTITY_POOL_ID,
-          });
-        
-          const s3Client = new awsS3.S3Client({
-            region: REGION,
-            credentials,
-          });
-        
-          const upload = new awsLibStorage.Upload({
-            client: s3Client,
-            params: {
-              Bucket: BUCKET_NAME,
-              Key: `uploads/${file.name}`, // You can prepend user ID if needed
-              Body: file,
-              ContentType: file.type,
-            },
-          });
-        
-          try {
-            await upload.done();
-            alert("File uploaded successfully!");
-          } catch (error) {
-            console.error("Upload failed: ", error);
-            alert("Failed to upload.");
-          }
-        });
-
-        let currentUser = {
-            name: 'John Doe',
-            email: 'john.doe@example.com',
-            avatar: 'JD'
-        };
-
         // Page navigation
         function showPage(pageId) {
             document.querySelectorAll('.page').forEach(page => {
@@ -168,3 +128,42 @@ const IDENTITY_POOL_ID = "YOUR_IDENTITY_POOL_ID"; // from Cognito
         document.addEventListener('DOMContentLoaded', function() {
             updateUserDisplay();
         });
+
+        // Setup S3 upload listener after DOM is ready
+    const fileInput = document.getElementById("fileInput");
+
+    if (fileInput) {
+        fileInput.addEventListener("change", async (event) => {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const credentials = awsCognitoIdentity.fromCognitoIdentityPool({
+                clientConfig: { region: REGION },
+                identityPoolId: IDENTITY_POOL_ID,
+            });
+
+            const s3Client = new awsS3.S3Client({
+                region: REGION,
+                credentials,
+            });
+
+            const upload = new awsLibStorage.Upload({
+                client: s3Client,
+                params: {
+                    Bucket: BUCKET_NAME,
+                    Key: `uploads/${file.name}`,
+                    Body: file,
+                    ContentType: file.type,
+                },
+            });
+
+            try {
+                await upload.done();
+                alert("File uploaded successfully!");
+            } catch (error) {
+                console.error("Upload failed: ", error);
+                alert("Failed to upload.");
+            }
+        });
+    }
+});
