@@ -1,313 +1,102 @@
 <!DOCTYPE html>
 <html lang="en">
- <head>
-  <meta charset="utf-8"/>
-  <meta content="width=device-width, initial-scale=1.0" name="viewport"/>
-  <title>
-   CloudVault - Storage &amp; Notes
-  </title>
-  <link href="style.css" rel="stylesheet"/>
- </head>
- <body>
-  <!-- Login Page -->
-  <!-- Register Page -->
-  <!-- Main Dashboard -->
-  <div class="page" id="dashboard-page">
-   <aside class="sidebar">
-    <header class="logo">
-     <h1>
-      <span class="logo-icon">
-       CV
-      </span>
-      CloudVault
-     </h1>
-    </header>
-    <section class="usage-stats">
-     <article class="usage-item">
-      <span>
-       Files
-      </span>
-      <span id="files-count">
-       0 / 1,000
-      </span>
-     </article>
-     <progress class="usage-bar" id="files-progress" max="100" value="0">
-      <span class="usage-fill" style="width: 0%">
-      </span>
-     </progress>
-     <article class="usage-item" style="margin-top: 20px;">
-      <span>
-       Notes
-      </span>
-      <span id="notes-count">
-       0 / 500
-      </span>
-     </article>
-     <progress class="usage-bar" id="notes-progress" max="100" value="0">
-      <span class="usage-fill" style="width: 0%">
-      </span>
-     </progress>
-     <article class="usage-item" style="margin-top: 20px;">
-      <span>
-       Storage
-      </span>
-      <span id="storage-count">
-       0 GB / 50 GB
-      </span>
-     </article>
-     <progress class="usage-bar" id="storage-progress" max="100" value="0">
-      <span class="usage-fill" style="width: 0%">
-      </span>
-     </progress>
-    </section>
-   </aside>
-   <main class="main-content">
-    <header class="header">
-     <nav class="tabs">
-      <button class="tab active" data-tab="storage">
-       📁 Storage
-      </button>
-      <button class="tab" data-tab="notes">
-       📝 Notes
-      </button>
-     </nav>
-     <section class="user-profile" id="user-profile">
-      <figure class="user-avatar" id="user-avatar">
-       JD
-      </figure>
-      <article class="user-info">
-       <h2 class="user-name" id="user-name">
-        John Doe
-       </h2>
-       <p class="user-email" id="user-email">
-        john.doe@example.com
-       </p>
-      </article>
-      <span class="dropdown-arrow">
-       ▼
-      </span>
-      <div class="dropdown-menu" id="dropdown-menu">
-       <div class="dropdown-item" onclick="showPage('profile-page')">
-        <span>
-         👤
-        </span>
-        <span>
-         Profile
-        </span>
-       </div>
-       <div class="dropdown-item" onclick="showPage('settings-page')">
-        <span>
-         ⚙️
-        </span>
-        <span>
-         Settings
-        </span>
-       </div>
-       <div class="dropdown-item danger" onclick="signOut()">
-        <span>
-         🚪
-        </span>
-        <span>
-         Sign Out
-        </span>
-       </div>
-      </div>
-     </section>
-    </header>
-    <section class="content-area">
-     <article class="tab-content active" id="storage">
-      <section class="storage-content">
-       <figure class="empty-icon">
-        📁
-       </figure>
-       <h2 class="empty-state">
-        Your storage is empty
-       </h2>
-       <p style="color: #9ca3af; margin-bottom: 20px;">
-        Upload your first file to get started
-       </p>
-       <button class="upload-btn">
-        Upload Files
-       </button>
-      </section>
-     </article>
-     <article class="tab-content" id="notes">
-      <section class="notes-content">
-       <figure class="empty-icon">
-        📝
-       </figure>
-       <h2 class="empty-state">
-        No notes yet
-       </h2>
-       <p style="color: #9ca3af; margin-bottom: 20px;">
-        Create your first note to start organizing your thoughts
-       </p>
-       <button class="upload-btn">
-        Create Note
-       </button>
-      </section>
-     </article>
-    </section>
-   </main>
-  </div>
-  <!-- Profile Page -->
-  <div class="page" id="profile-page">
-   <div class="auth-container">
-    <div class="profile-container">
-     <button class="back-btn" onclick="showPage('dashboard-page')">
-      ← Back to Dashboard
-     </button>
-     <div class="profile-header">
-      <figure class="profile-avatar" id="profile-avatar">
-       JD
-      </figure>
-      <div class="profile-info">
-       <h1 id="profile-name">
-        John Doe
-       </h1>
-       <p id="profile-email">
-        john.doe@example.com
-       </p>
-      </div>
-     </div>
-     <form id="profile-form">
-      <div class="form-group">
-       <label for="profile-full-name">
-        Full Name
-       </label>
-       <input id="profile-full-name" name="name" type="text" value="John Doe"/>
-      </div>
-      <div class="form-group">
-       <label for="profile-email-input">
-        Email
-       </label>
-       <input id="profile-email-input" name="email" type="email" value="john.doe@example.com"/>
-      </div>
-      <div class="form-group">
-       <label for="profile-bio">
-        Bio
-       </label>
-       <textarea id="profile-bio" name="bio" rows="4" style="width: 100%; padding: 12px 16px; border: 1px solid rgba(0, 0, 0, 0.1); border-radius: 8px; font-family: inherit; resize: vertical;">I'm a developer who loves organizing files and notes efficiently.</textarea>
-      </div>
-      <button class="save-btn" type="submit">
-       Save Changes
-      </button>
-     </form>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudVault - Storage & Notes</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Main Dashboard -->
+    <div id="dashboard-page" class="dashboard">
+        <aside class="sidebar">
+            <header class="logo">
+                
+            </header>
+            
+            <section class="usage-stats">
+                <article class="usage-item">
+                    <span>Files</span>
+                    <span id="files-count">0 / 1,000</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="files-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+                
+                <article class="usage-item" style="margin-top: 20px;">
+                    <span>Notes</span>
+                    <span id="notes-count">0 / 500</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="notes-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+                
+                <article class="usage-item" style="margin-top: 20px;">
+                    <span>Storage</span>
+                    <span id="storage-count">0 GB / 50 GB</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="storage-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+            </section>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <nav class="tabs">
+                    <button class="tab active" data-tab="storage">📁 Storage</button>
+                    <button class="tab" data-tab="notes">📝 Notes</button>
+                </nav>
+                
+                <section class="user-profile" id="user-profile">
+                    <figure class="user-avatar" id="user-avatar">JD</figure>
+                    <article class="user-info">
+                        <h2 class="user-name" id="user-name">John Doe</h2>
+                        <p class="user-email" id="user-email">john.doe@example.com</p>
+                    </article>
+                    <span class="dropdown-arrow">▼</span>
+                    
+                    <div class="dropdown-menu" id="dropdown-menu">
+                        <div class="dropdown-item" onclick="showPage('profile-page')">
+                            <span>👤</span>
+                            <span>Profile</span>
+                        </div>
+                        <div class="dropdown-item" onclick="showPage('settings-page')">
+                            <span>⚙️</span>
+                            <span>Settings</span>
+                        </div>
+                        <div class="dropdown-item danger" onclick="signOut()">
+                            <span>🚪</span>
+                            <span>Sign Out</span>
+                        </div>
+                    </div>
+                </section>
+            </header>
+
+            <section class="content-area">
+                <article class="tab-content active" id="storage">
+                    <section class="storage-content">
+                        <figure class="empty-icon">📁</figure>
+                        <h2 class="empty-state">Your storage is empty</h2>
+                        <p style="color: #9ca3af; margin-bottom: 20px;">
+                            Upload your first file to get started
+                        </p>
+                        <button class="upload-btn">Upload Files</button>
+                    </section>
+                </article>
+
+                <article class="tab-content" id="notes">
+                    <section class="notes-content">
+                        <figure class="empty-icon">📝</figure>
+                        <h2 class="empty-state">No notes yet</h2>
+                        <p style="color: #9ca3af; margin-bottom: 20px;">
+                            Create your first note to start organizing your thoughts
+                        </p>
+                        <button class="upload-btn">Create Note</button>
+                    </section>
+                </article>
+            </section>
+        </main>
     </div>
-   </div>
-  </div>
-  <!-- Settings Page -->
-  <div class="page" id="settings-page">
-   <div class="auth-container">
-    <div class="settings-container">
-     <button class="back-btn" onclick="showPage('dashboard-page')">
-      ← Back to Dashboard
-     </button>
-     <h1 style="color: #4a5568; margin-bottom: 30px;">
-      Settings
-     </h1>
-     <div class="settings-section">
-      <h2>
-       Preferences
-      </h2>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Email Notifications
-        </div>
-        <div class="settings-description">
-         Receive updates about your files and notes
-        </div>
-       </div>
-       <div class="toggle-switch active" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Auto-sync
-        </div>
-        <div class="settings-description">
-         Automatically sync files across devices
-        </div>
-       </div>
-       <div class="toggle-switch active" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Dark Mode
-        </div>
-        <div class="settings-description">
-         Use dark theme for better viewing
-        </div>
-       </div>
-       <div class="toggle-switch" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-     </div>
-     <div class="settings-section">
-      <h2>
-       Security
-      </h2>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Two-Factor Authentication
-        </div>
-        <div class="settings-description">
-         Add an extra layer of security
-        </div>
-       </div>
-       <div class="toggle-switch" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Login Notifications
-        </div>
-        <div class="settings-description">
-         Get notified of new sign-ins
-        </div>
-       </div>
-       <div class="toggle-switch active" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-     </div>
-     <div class="settings-section">
-      <h2>
-       Storage
-      </h2>
-      <div class="settings-item">
-       <div>
-        <div class="settings-label">
-         Auto-delete old files
-        </div>
-        <div class="settings-description">
-         Remove files older than 6 months
-        </div>
-       </div>
-       <div class="toggle-switch" onclick="toggleSwitch(this)">
-       </div>
-      </div>
-     </div>
-     <div class="danger-zone">
-      <h3>
-       Danger Zone
-      </h3>
-      <p>
-       These actions are irreversible. Please be careful.
-      </p>
-      <button class="danger-btn" onclick="deleteAccount()">
-       Delete Account
-      </button>
-     </div>
-    </div>
-   </div>
-  </div>
-  <script src="script.js">
-  </script>
- </body>
+</body>
 </html>
