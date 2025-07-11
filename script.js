@@ -45,6 +45,33 @@ const BUCKET_NAME = "cs-notesfiles";
 		    });
 		    document.getElementById(pageId).classList.add('active');
 		}
+
+		// ======= INIT ON PAGE LOAD =======
+		document.addEventListener('DOMContentLoaded', function () {
+		    if (cognitoUser) {
+		        cognitoUser.getSession(function (err, session) {
+		            if (err || !session.isValid()) {
+		                showPage('login-page');
+		                return;
+		            }
+		
+		            // Set credentials
+		            const idToken = session.getIdToken().getJwtToken();
+		            setAWSCredentials(idToken);
+		
+		            // Set user info
+		            const name = cognitoUser.getUsername();
+		            currentUser.name = name;
+		            currentUser.email = name;
+		            currentUser.avatar = name[0].toUpperCase();
+		
+		            updateUserDisplay();
+		            showPage('dashboard-page');
+		        });
+		    } else {
+		        showPage('login-page');
+		    }
+		}
 		
 		// ======= USER DROPDOWN MENU =======
 		document.getElementById('user-profile').addEventListener('click', function (e) {
@@ -139,32 +166,4 @@ const BUCKET_NAME = "cs-notesfiles";
 		        e.target.style.transform = 'scale(0.95)';
 		        setTimeout(() => e.target.style.transform = '', 150);
 		    });
-		});
-		
-		// ======= INIT ON PAGE LOAD =======
-		document.addEventListener('DOMContentLoaded', function () {
-		    if (cognitoUser) {
-		        cognitoUser.getSession(function (err, session) {
-		            if (err || !session.isValid()) {
-		                showPage('login-page');
-		                return;
-		            }
-		
-		            // Set credentials
-		            const idToken = session.getIdToken().getJwtToken();
-		            setAWSCredentials(idToken);
-		
-		            // Set user info
-		            const name = cognitoUser.getUsername();
-		            currentUser.name = name;
-		            currentUser.email = name;
-		            currentUser.avatar = name[0].toUpperCase();
-		
-		            updateUserDisplay();
-		            showPage('dashboard-page');
-		        });
-		    } else {
-		        showPage('login-page');
-		    }
-		}
 		});
