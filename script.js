@@ -1,3 +1,36 @@
+const REGION = "ap-southeast-1";
+const USER_POOL_ID = "ap-southeast-1_2GP2VeU1m";
+const CLIENT_ID = "14ogj9aammkrug4l8fk4s48pg7";
+const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5";
+const BUCKET_NAME = "cs-notesfiles";
+
+const poolData = {
+    UserPoolId: USER_POOL_ID,
+    ClientId: CLIENT_ID
+};
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+let cognitoUser = userPool.getCurrentUser();
+
+// Configure AWS credentials using Cognito Identity
+function setAWSCredentials(idTokenJwt) {
+    AWS.config.region = REGION;
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+        IdentityPoolId: IDENTITY_POOL_ID,
+        Logins: {
+            [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idTokenJwt
+        }
+    });
+
+    AWS.config.credentials.get(function (err) {
+        if (err) {
+            console.error("Error getting AWS credentials", err);
+        } else {
+            console.log("AWS credentials set");
+        }
+    });
+}
+
 		// ======= GLOBAL USER DATA =======
 		let currentUser = {
 		    name: 'John Doe',
@@ -110,7 +143,27 @@
 		
 		// ======= INIT ON PAGE LOAD =======
 		document.addEventListener('DOMContentLoaded', function () {
-		    updateUserDisplay();
-		    // TODO: Check if user is already signed in via Cognito
-		    // If signed in, show dashboard and load their notes/files from S3
+		    if (cognitoUser) {
+		        cognitoUser.getSession(function (err, session) {
+		            if (err || !session.isValid()) {
+		                showPage('login-page');
+		                return;
+		            }
+		
+		            // Set credentials
+		            const idToken = session.getIdToken().getJwtToken();
+		            setAWSCredentials(idToken);
+		
+		            // Set user info
+		            const name = cognitoUser.getUsername();
+		            currentUser.name = name;
+		            currentUser.email = name;
+		            currentUser.avatar = name[0].toUpperCase();
+		
+		            updateUserDisplay();
+		            showPage('dashboard-page');
+		        });
+		    } else {
+		        showPage('login-page');
+		    }
 		});
