@@ -57,17 +57,17 @@
                     <span class="dropdown-arrow">▼</span>
                     
                     <div class="dropdown-menu" id="dropdown-menu">
-                        <div class="dropdown-item" onclick="showPage('profile-page')">
+                        <a class="dropdown-item" href="#" onclick="openProfile()">
                             <span>👤</span>
                             <span>Profile</span>
-                        </div>
-                        <div class="dropdown-item" onclick="showPage('settings-page')">
+                        </a>
+                        <a class="dropdown-item" href="#" onclick="openSettings()">
                             <span>⚙️</span>
                             <span>Settings</span>
-                        </div>
+                        </a>
                         <a class="dropdown-item danger" href="https://csnuserpool.auth.ap-southeast-1.amazoncognito.com/logout?client_id=140gj9aammkrug4l8fk4s48pg7&logout_uri=https://lesty2425.github.io/csf-login/">
-                          <span>🚪</span>
-                          <span>Sign Out</span>
+                            <span>🚪</span>
+                            <span>Sign Out</span>
                         </a>
                     </div>
                 </section>
@@ -81,7 +81,7 @@
                         <p style="color: #9ca3af; margin-bottom: 20px;">
                             Upload your first file to get started
                         </p>
-                        <button class="upload-btn">Upload Files</button>
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Files</button>
                     </section>
                 </article>
 
@@ -99,10 +99,6 @@
         </main>
     </div>
 
-  <script src="https://unpkg.com/@aws-sdk/client-s3"></script>
-  <script src="https://unpkg.com/@aws-sdk/credential-providers"></script>
-  <script src="https://unpkg.com/@aws-sdk/lib-storage"></script>
-
-  <script src="script.js"></script>
+    <script src="script.js"></script>
 </body>
 </html>
