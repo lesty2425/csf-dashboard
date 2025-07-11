@@ -166,4 +166,5 @@ const BUCKET_NAME = "cs-notesfiles";
 		    } else {
 		        showPage('login-page');
 		    }
+		}
 		});
