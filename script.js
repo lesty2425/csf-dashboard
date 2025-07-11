@@ -80,9 +80,17 @@ let currentUser = {
 
         // Update user display across all pages
         function updateUserDisplay() {
-            document.addEventListener('DOMContentLoaded', function() {
-                    fetchUserFromCognito();
-            });
+                // Dashboard user info
+                document.getElementById('user-name').textContent = currentUser.name;
+                document.getElementById('user-email').textContent = currentUser.email;
+                document.getElementById('user-avatar').textContent = currentUser.avatar;
+            
+                // Profile page
+                document.getElementById('profile-name').textContent = currentUser.name;
+                document.getElementById('profile-email').textContent = currentUser.email;
+                document.getElementById('profile-avatar').textContent = currentUser.avatar;
+                document.getElementById('profile-full-name').value = currentUser.name;
+                document.getElementById('profile-email-input').value = currentUser.email;
         }
 
         function fetchUserFromCognito() {
