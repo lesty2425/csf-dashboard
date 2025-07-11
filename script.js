@@ -1,7 +1,21 @@
 // Global user data
-const REGION = "us-east-1"; // change to your AWS region
-const BUCKET_NAME = "cs-notesfiles"; // your S3 bucket name
-const IDENTITY_POOL_ID = "YOUR_IDENTITY_POOL_ID"; // from Cognito
+const REGION = "ap-southeast-1"; // AWS region
+const BUCKET_NAME = "cs-notesfiles"; // bucket name 
+const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5"; // from Cognito
+
+const poolData = {
+  UserPoolId: 'ap-southeast-1_2GP2VeU1m', 
+  ClientId: '14ogj9aammkrug4l8fk4s48pg7'
+};
+
+const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+const cognitoUser = userPool.getCurrentUser();
+
+let currentUser = {
+  name: 'Loading...',
+  email: 'Loading...',
+  avatar: '?'
+};
 
         // Page navigation
         function showPage(pageId) {
@@ -66,19 +80,41 @@ const IDENTITY_POOL_ID = "YOUR_IDENTITY_POOL_ID"; // from Cognito
 
         // Update user display across all pages
         function updateUserDisplay() {
-            // Dashboard user info
-            document.getElementById('user-name').textContent = currentUser.name;
-            document.getElementById('user-email').textContent = currentUser.email;
-            document.getElementById('user-avatar').textContent = currentUser.avatar;
-            
-            // Profile page
-            document.getElementById('profile-name').textContent = currentUser.name;
-            document.getElementById('profile-email').textContent = currentUser.email;
-            document.getElementById('profile-avatar').textContent = currentUser.avatar;
-            document.getElementById('profile-full-name').value = currentUser.name;
-            document.getElementById('profile-email-input').value = currentUser.email;
+            document.addEventListener('DOMContentLoaded', function() {
+                    fetchUserFromCognito();
+            });
         }
 
+        function fetchUserFromCognito() {
+          if (cognitoUser != null) {
+            cognitoUser.getSession(function (err, session) {
+              if (err) {
+                console.error("Session error:", err);
+                return;
+              }
+        
+              cognitoUser.getUserAttributes(function (err, attributes) {
+                if (err) {
+                  console.error("Error getting user attributes", err);
+                  return;
+                }
+        
+                const attrMap = {};
+                attributes.forEach(attr => {
+                  attrMap[attr.getName()] = attr.getValue();
+                });
+        
+                currentUser.name = attrMap.name || 'No Name';
+                currentUser.email = attrMap.email || 'No Email';
+                currentUser.avatar = currentUser.name.split(' ').map(n => n[0]).join('').toUpperCase();
+        
+                updateUserDisplay();
+              });
+            });
+          } else {
+            console.warn("No user session found.");
+          }
+        }
         // Settings toggle switches
         function toggleSwitch(element) {
             element.classList.toggle('active');
