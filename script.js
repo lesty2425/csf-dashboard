@@ -19,28 +19,42 @@ setAWSCredentials(idToken);
 		
 // Set user info
 cognitoUser.getUserAttributes(function (err, attributes) {
-		if (err) {
-		        console.error("Error getting user attributes:", err);
-		        return;
-		    }
-		
-		const attrMap = {};
-		    attributes.forEach(attr => {
-		        attrMap[attr.getName()] = attr.getValue();
-		    });
-		
-		currentUser.name = `${attrMap.given_name || ''} ${attrMap.family_name || ''}`.trim();
-		currentUser.email = attrMap.email || "unknown@example.com";
-		currentUser.avatar = currentUser.name
-		  .split(' ')
-		  .map(w => w[0])
-		  .join('')
-		  .toUpperCase();
-		
-		    updateUserDisplay();
-		    showPage('dashboard-page');
+			    if (err) {
+			        console.error("Error getting user attributes:", err);
+			        // Use fallback values if attributes can't be fetched
+			        currentUser.name = "User";
+			        currentUser.email = "user@example.com";
+			        currentUser.avatar = "U";
+			        updateUserDisplay();
+			        showPage('dashboard-page');
+			        return;
+			    }
+			    
+			    const attrMap = {};
+			    attributes.forEach(attr => {
+			        attrMap[attr.getName()] = attr.getValue();
+			    });
+			    
+			    // Set user data from Cognito attributes
+			    currentUser.name = `${attrMap.given_name || attrMap.name || 'User'}`.trim();
+			    currentUser.email = attrMap.email || "user@example.com";
+			    
+			    // Create avatar from name initials
+			    currentUser.avatar = currentUser.name
+			        .split(' ')
+			        .filter(w => w.length > 0)  // Filter out empty strings
+			        .map(w => w[0])
+			        .join('')
+			        .toUpperCase();
+			    
+			    // If no initials, use first letter of email
+			    if (!currentUser.avatar && currentUser.email) {
+			        currentUser.avatar = currentUser.email[0].toUpperCase();
+			    }
+			    
+			    updateUserDisplay();
+			    showPage('dashboard-page');
 			});
-		        });
 		    } else {
 		        showPage('login-page');
 		    }
