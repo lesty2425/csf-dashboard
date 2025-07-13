@@ -169,7 +169,7 @@ function signOut() {
         currentUser = { name: '', email: '', avatar: '' };
         showPage('login-page');
         // Clear any existing session data
-        window.location.reload(); // Ensures clean state
+        window.location.href = "https://bit.ly/409eKBJ";
     }
 }
 
