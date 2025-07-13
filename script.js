@@ -115,6 +115,23 @@ cognitoUser.getUserAttributes(function (err, attributes) {
 		    email: '',
 		    avatar: ''
 		};
+
+		// ======= UPDATE USER DISPLAY FUNCTION =======
+		function updateUserDisplay(userAttributes) {
+		    const name = userAttributes.name || "User";
+		    const email = userAttributes.email || "user@example.com";
+		    const avatar = name.split(' ').map(n => n[0]).join('').toUpperCase() || 
+		                  (email ? email[0].toUpperCase() : "U");
+		
+		    document.getElementById('user-name').textContent = name;
+		    document.getElementById('user-email').textContent = email;
+		    document.getElementById('user-avatar').textContent = avatar;
+		
+		    // Optional: Also update the global `currentUser` object
+		    currentUser.name = name;
+		    currentUser.email = email;
+		    currentUser.avatar = avatar;
+		}
 		
 		// ======= PAGE NAVIGATION =======
 		function showPage(pageId) {
