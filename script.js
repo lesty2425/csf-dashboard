@@ -43,44 +43,30 @@ setAWSCredentials(idToken);
 		
 // Set user info
 cognitoUser.getUserAttributes(function (err, attributes) {
-			    if (err) {
-				console.error("Error getting user attributes:", err);
-			        // Set fallback values
-			        document.getElementById('user-name').textContent = "User";
-			        document.getElementById('user-email').textContent = "user@example.com";
-			        document.getElementById('user-avatar').textContent = "U";
-			        return;
-			    }
+	if (err) {
+	        console.error("Error fetching user data:", err);
+	        updateUserDisplay(); // Show fallback values
+	        return;
+   	 }
 			    
-			    // Set user data from Cognito attributes
-			    const userData = {
-			        name: '',
-			        email: '',
-			    };
+	currentUser = { name: '', email: '', avatar: '' };
 			    
-			    attributes.forEach(attribute => {
-			        if (attribute.getName() === 'name') {
-			            userData.name = attribute.getValue();
-			        } else if (attribute.getName() === 'email') {
-			            userData.email = attribute.getValue();
-			        }
-			    });
-			
-			    // Set display values
-			    document.getElementById('user-name').textContent = userData.name || "User";
-			    document.getElementById('user-email').textContent = userData.email || "user@example.com";
-			    
-			    // Generate avatar initials
-			    const avatarText = userData.name 
-			        ? userData.name.split(' ').map(n => n[0]).join('').toUpperCase()
-			        : (userData.email ? userData.email[0].toUpperCase() : "U");
-			    
-			    document.getElementById('user-avatar').textContent = avatarText;
-			});
-		    } else {
-		        showPage('login-page');
-		    }
-		});
+	// Extract Cognito attributes
+	attributes.forEach(attr => {
+		if (attr.getName() === 'name') currentUser.name = attr.getValue();
+	        if (attr.getName() === 'email') currentUser.email = attr.getValue();
+	});
+
+	currentUser.avatar = currentUser.name
+        	.split(' ')
+        	.map(word => word[0] || '')
+        	.join('')
+        	.toUpperCase() || 
+        	(currentUser.email ? currentUser.email[0].toUpperCase() : 'U');
+
+		updateUserDisplay(); // Update UI
+    		showPage('dashboard-page');
+	});
 
         const poolData = {
 		    UserPoolId: USER_POOL_ID,
@@ -118,19 +104,9 @@ cognitoUser.getUserAttributes(function (err, attributes) {
 
 		// ======= UPDATE USER DISPLAY FUNCTION =======
 		function updateUserDisplay(userAttributes) {
-		    const name = userAttributes.name || "User";
-		    const email = userAttributes.email || "user@example.com";
-		    const avatar = name.split(' ').map(n => n[0]).join('').toUpperCase() || 
-		                  (email ? email[0].toUpperCase() : "U");
-		
-		    document.getElementById('user-name').textContent = name;
-		    document.getElementById('user-email').textContent = email;
-		    document.getElementById('user-avatar').textContent = avatar;
-		
-		    // Optional: Also update the global `currentUser` object
-		    currentUser.name = name;
-		    currentUser.email = email;
-		    currentUser.avatar = avatar;
+		        document.getElementById('user-name').textContent = currentUser.name || "User";
+    			document.getElementById('user-email').textContent = currentUser.email || "user@example.com";
+    			document.getElementById('user-avatar').textContent = currentUser.avatar || "U";
 		}
 		
 		// ======= PAGE NAVIGATION =======
