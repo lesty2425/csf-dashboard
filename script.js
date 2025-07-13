@@ -208,61 +208,205 @@ function getUserPrefix(callback) {
     });
 }
 
+// Initialize file upload when DOM loads
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize file upload
+    const fileInput = document.getElementById('fileInput');
+    fileInput.addEventListener('change', handleFileUpload);
+    
+    // Load existing files if user is authenticated
+    if (cognitoUser) {
+        cognitoUser.getSession(function(err, session) {
+            if (!err && session.isValid()) {
+                getUserPrefix(listUserFiles);
+            }
+        });
+    }
+});
+
+function handleFileUpload(e) {
+    const files = e.target.files;
+    for (let i = 0; i < files.length; i++) {
+        uploadFile(files[i]);
+    }
+    e.target.value = ''; // Reset input
+}
+
+function toggleEmptyState(hasFiles) {
+    const emptyState = document.getElementById('empty-storage-state');
+    const fileListContainer = document.getElementById('file-list-container');
+    
+    if (hasFiles) {
+        emptyState.style.display = 'none';
+        fileListContainer.style.display = 'block';
+    } else {
+        emptyState.style.display = 'block';
+        fileListContainer.style.display = 'none';
+    }
+}
+
 function uploadFile(file) {
     getUserPrefix(function(userId) {
         if (!userId) return;
+        
+        // Show upload progress
+        const progress = document.createElement('div');
+        progress.className = 'upload-progress';
+        progress.textContent = `Uploading ${file.name}...`;
+        document.getElementById('file-list').prepend(progress);
+        
         const s3 = new AWS.S3();
         const params = {
             Bucket: BUCKET_NAME,
             Key: `${userId}/${file.name}`,
-            Body: file
+            Body: file,
+            ContentType: file.type
         };
-        s3.putObject(params, function(err, data) {
+        
+        s3.upload(params)
+            .on('httpUploadProgress', function(evt) {
+                const percentage = Math.round((evt.loaded * 100) / evt.total);
+                progress.textContent = `Uploading ${file.name}: ${percentage}%`;
+            })
+            .send(function(err, data) {
+                if (err) {
+                    progress.textContent = `Error uploading ${file.name}`;
+                    progress.className = 'upload-error';
+                    console.error("Upload error:", err);
+                } else {
+                    progress.textContent = `Uploaded: ${file.name}`;
+                    progress.className = 'upload-success';
+                    listUserFiles(userId); // Refresh file list
+                }
+            });
+    });
+}
+
+function listUserFiles(userId) {
+    const s3 = new AWS.S3();
+    const params = {
+        Bucket: BUCKET_NAME,
+        Prefix: `${userId}/`
+    };
+
+    s3.listObjectsV2(params, function(err, data) {
+        if (err) {
+            console.error("List error:", err);
+            return;
+        }
+
+        const fileList = data.Contents || [];
+        let totalSizeBytes = 0;
+        const fileListElement = document.getElementById('file-list');
+        
+        // Clear existing files (keep upload status messages)
+        const uploadStatusItems = fileListElement.querySelectorAll('.upload-progress, .upload-success, .upload-error');
+        fileListElement.innerHTML = '';
+        uploadStatusItems.forEach(item => fileListElement.appendChild(item));
+        
+        // Add files to the list
+        fileList.forEach(obj => {
+            const fileName = obj.Key.split('/').pop();
+            if (fileName) {
+                totalSizeBytes += obj.Size;
+                
+                const fileItem = document.createElement('div');
+                fileItem.className = 'file-item';
+                
+                const fileNameSpan = document.createElement('span');
+                fileNameSpan.className = 'file-name';
+                fileNameSpan.textContent = fileName;
+                
+                const fileSizeSpan = document.createElement('span');
+                fileSizeSpan.className = 'file-size';
+                fileSizeSpan.textContent = formatFileSize(obj.Size);
+                
+                const fileActions = document.createElement('div');
+                fileActions.className = 'file-actions';
+                
+                const downloadBtn = document.createElement('button');
+                downloadBtn.textContent = 'Download';
+                downloadBtn.onclick = () => downloadFile(fileName);
+                
+                const deleteBtn = document.createElement('button');
+                deleteBtn.textContent = 'Delete';
+                deleteBtn.className = 'delete';
+                deleteBtn.onclick = () => {
+                    if (confirm(`Delete ${fileName}?`)) {
+                        deleteFile(fileName);
+                    }
+                };
+                
+                fileActions.appendChild(downloadBtn);
+                fileActions.appendChild(deleteBtn);
+                
+                fileItem.appendChild(fileNameSpan);
+                fileItem.appendChild(fileSizeSpan);
+                fileItem.appendChild(fileActions);
+                fileListElement.appendChild(fileItem);
+            }
+        });
+
+        // Update UI based on whether files exist
+        toggleEmptyState(fileList.length > 0);
+        
+        // Update storage stats
+        updateUsage(
+            fileList.length, 
+            0, // Notes count (update this if you implement notes)
+            (totalSizeBytes / (1024 ** 3)).toFixed(2) // Convert to GB
+        );
+        
+        // Update storage stats text
+        document.getElementById('storage-stats-text').textContent = 
+            `${fileList.length} ${fileList.length === 1 ? 'file' : 'files'} (${(totalSizeBytes / (1024 ** 3)).toFixed(2)} GB used)`;
+    });
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    if (bytes < 1024 * 1024 * 1024) return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+    return (bytes / (1024 * 1024 * 1024)).toFixed(1) + ' GB';
+}
+
+// Make sure to implement these functions:
+function downloadFile(fileName) {
+    getUserPrefix(userId => {
+        const s3 = new AWS.S3();
+        const params = {
+            Bucket: BUCKET_NAME,
+            Key: `${userId}/${fileName}`
+        };
+        s3.getSignedUrl('getObject', params, (err, url) => {
             if (err) {
-                console.error("Upload error:", err);
+                console.error("Download error:", err);
+                alert("Error preparing download");
             } else {
-                console.log("Upload success:", data);
-                listUserFiles(userId);
+                window.open(url);
             }
         });
     });
 }
 
-function listUserFiles(userId) {
-  const s3 = new AWS.S3();
-  const params = {
-    Bucket: BUCKET_NAME,
-    Prefix: `${userId}/`
-  };
-
-  s3.listObjectsV2(params, function(err, data) {
-    if (err) {
-      console.error("List error:", err);
-      return;
-    }
-
-    const fileList = data.Contents || [];
-    let totalSizeBytes = 0;
-
-    // Clear current display
-    const storageBox = document.getElementById("your-file-list-box-id"); // replace with actual element ID
-    storageBox.innerHTML = '';
-
-    // Render file names
-    fileList.forEach(obj => {
-      const fileName = obj.Key.split('/').pop(); // remove prefix
-      if (fileName) {
-        const item = document.createElement("div");
-        item.textContent = fileName;
-        storageBox.appendChild(item);
-        totalSizeBytes += obj.Size;
-      }
+function deleteFile(fileName) {
+    getUserPrefix(userId => {
+        const s3 = new AWS.S3();
+        const params = {
+            Bucket: BUCKET_NAME,
+            Key: `${userId}/${fileName}`
+        };
+        s3.deleteObject(params, (err, data) => {
+            if (err) {
+                console.error("Delete error:", err);
+                alert("Error deleting file");
+            } else {
+                listUserFiles(userId); // Refresh list
+            }
+        });
     });
-
-    // Update usage bar
-    updateUsage(fileList.length, 0, (totalSizeBytes / (1024 ** 3)).toFixed(2)); // GB
-  });
 }
+
 
 
 // function downloadFile(fileName) {
