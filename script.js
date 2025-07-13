@@ -41,6 +41,10 @@ function setAWSCredentials(idTokenJwt) {
 
 // Update user display in UI
 function updateUserDisplay() {
+    const nameElement = document.getElementById('user-name');
+    const emailElement = document.getElementById('user-email');
+    const avatarElement = document.getElementById('user-avatar');
+    
     document.getElementById('user-name').textContent = currentUser.name || "User";
     document.getElementById('user-email').textContent = currentUser.email || "user@example.com";
     document.getElementById('user-avatar').textContent = currentUser.avatar || "U";
@@ -48,10 +52,15 @@ function updateUserDisplay() {
 
 // Page navigation
 function showPage(pageId) {
-    document.querySelectorAll('.page').forEach(page => {
+    const pages = document.querySelectorAll('.page');
+    if (!pages.length) return;
+    
+    pages.forEach(page => {
         page.classList.remove('active');
     });
-    document.getElementById(pageId).classList.add('active');
+    
+    const targetPage = document.getElementById(pageId);
+    if (targetPage) targetPage.classList.add('active');
 }
 
 // Initialize on page load
@@ -101,38 +110,54 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-// User dropdown menu
-document.getElementById('user-profile').addEventListener('click', function(e) {
-    e.stopPropagation();
-    const dropdown = document.getElementById('dropdown-menu');
-    this.classList.toggle('open');
-    dropdown.classList.toggle('open');
-});
-
-// Close dropdown if click outside
-document.addEventListener('click', function() {
-    const dropdown = document.getElementById('dropdown-menu');
-    const profile = document.getElementById('user-profile');
+//dropdown meny funtion
+document.addEventListener('DOMContentLoaded', function() {
+    const profileElement = document.getElementById('user-profile');
+    const dropdownElement = document.getElementById('dropdown-menu');
     
-    if (dropdown.classList.contains('open')) {
-        dropdown.classList.remove('open');
-        profile.classList.remove('open');
+    if (profileElement && dropdownElement) {
+        profileElement.addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.classList.toggle('open');
+            dropdownElement.classList.toggle('open');
+        });
     }
+
+    // Close dropdown when clicking outside
+    document.addEventListener('click', function(e) {
+        if (!e.target.closest('#user-profile') && dropdownElement) {
+            dropdownElement.classList.remove('open');
+            if (profileElement) profileElement.classList.remove('open');
+        }
+    });
 });
 
-// Tabs functionality
-const tabs = document.querySelectorAll('.tab');
-const tabContents = document.querySelectorAll('.tab-content');
-
-tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-        tabs.forEach(t => t.classList.remove('active'));
-        tabContents.forEach(c => c.classList.remove('active'));
-
-        tab.classList.add('active');
-        const target = tab.getAttribute('data-tab');
-        document.getElementById(target).classList.add('active');
-    });
+//tab switching functiion
+document.addEventListener('DOMContentLoaded', function() {
+    const tabs = document.querySelectorAll('.tab');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    if (tabs.length && tabContents.length) {
+        tabs.forEach(tab => {
+            tab.addEventListener('click', function() {
+                // Remove active class from all tabs
+                tabs.forEach(t => t.classList.remove('active'));
+                
+                // Add active class to clicked tab
+                this.classList.add('active');
+                
+                // Hide all tab contents
+                tabContents.forEach(content => {
+                    content.classList.remove('active');
+                });
+                
+                // Show the corresponding content
+                const targetId = this.getAttribute('data-tab');
+                const targetContent = document.getElementById(targetId);
+                if (targetContent) targetContent.classList.add('active');
+            });
+        });
+    }
 });
 
 // Sign out function
@@ -143,6 +168,8 @@ function signOut() {
         }
         currentUser = { name: '', email: '', avatar: '' };
         showPage('login-page');
+        // Clear any existing session data
+        window.location.reload(); // Ensures clean state
     }
 }
 
