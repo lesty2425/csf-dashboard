@@ -57,14 +57,14 @@
                     <span class="dropdown-arrow">▼</span>
                     
                     <div class="dropdown-menu" id="dropdown-menu">
-                        <a class="dropdown-item" href="#" onclick="openProfile()">
+<!--                         <a class="dropdown-item" href="#" onclick="openProfile()">
                             <span>👤</span>
                             <span>Profile</span>
                         </a>
                         <a class="dropdown-item" href="#" onclick="openSettings()">
                             <span>⚙️</span>
                             <span>Settings</span>
-                        </a>
+                        </a> -->
                         <a class="dropdown-item danger" href="https://csnuserpool.auth.ap-southeast-1.amazoncognito.com/logout?client_id=140gj9aammkrug4l8fk4s48pg7&logout_uri=https://lesty2425.github.io/csf-login/">
                             <span>🚪</span>
                             <span>Sign Out</span>
@@ -75,6 +75,7 @@
 
             <section class="content-area">
                 <article class="tab-content active" id="storage">
+                    <input type="file" id="fileInput" style="display: none;" multiple>
                     <section class="storage-content">
                         <figure class="empty-icon">📁</figure>
                         <h2 class="empty-state">Your storage is empty</h2>
