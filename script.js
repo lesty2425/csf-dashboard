@@ -29,13 +29,13 @@ cognitoUser.getUserAttributes(function (err, attributes) {
 		        attrMap[attr.getName()] = attr.getValue();
 		    });
 		
-		currentUser.name = attrMap.name || "User";
+		currentUser.name = `${attrMap.given_name || ''} ${attrMap.family_name || ''}`.trim();
 		currentUser.email = attrMap.email || "unknown@example.com";
 		currentUser.avatar = currentUser.name
-		        .split(' ')
-		        .map(w => w[0])
-		        .join('')
-		        .toUpperCase();
+		  .split(' ')
+		  .map(w => w[0])
+		  .join('')
+		  .toUpperCase();
 		
 		    updateUserDisplay();
 		    showPage('dashboard-page');
