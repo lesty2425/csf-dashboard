@@ -80,11 +80,26 @@
                 <article class="tab-content active" id="storage">
                     <input type="file" id="fileInput" style="display: none;" multiple>
                     <section class="storage-content">
-                        <figure class="empty-icon">📁</figure>
-                        <h2 class="empty-state">Your storage is empty</h2>
-                        <p style="color: #9ca3af; margin-bottom: 20px;">
-                            Upload your first file to get started
-                        </p>
+                        <!-- Empty state (shown when no files) -->
+                        <div id="empty-storage-state">
+                            <figure class="empty-icon">📁</figure>
+                            <h2 class="empty-state">Your storage is empty</h2>
+                            <p style="color: #9ca3af; margin-bottom: 20px;">
+                                Upload your first file to get started
+                            </p>
+                        </div>
+
+                        <!-- File list container (shown when files exist) -->
+                        <div id="file-list-container" style="display: none;">
+                            <div class="file-list-header">
+                                <h3>Your Files</h3>
+                                <div class="storage-stats">
+                                    <span id="storage-stats-text">0 files (0 GB used)</span>
+                                </div>
+                            </div>
+                            <div id="file-list"></div>
+                        </div>
+                        
                         <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Files</button>
                     </section>
                 </article>
