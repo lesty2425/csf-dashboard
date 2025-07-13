@@ -338,7 +338,7 @@
             align-items: center;
             gap: 10px;
             cursor: pointer;
-            underline: none;
+            text-decoration: none;
             transition: background-color 0.2s ease;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
