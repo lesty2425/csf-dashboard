@@ -18,13 +18,24 @@ const idToken = session.getIdToken().getJwtToken();
 setAWSCredentials(idToken);
 		
 // Set user info
-const name = cognitoUser.getUsername();
-		            currentUser.name = name;
-		            currentUser.email = name;
-		            currentUser.avatar = name[0].toUpperCase();
+cognitoUser.getUserAttributes(function (err, attributes) {
+		    if (err) {
+		        console.error("Error getting user attributes:", err);
+		        return;
+		    }
 		
-		            updateUserDisplay();
-		            showPage('dashboard-page');
+		    const attrMap = {};
+		    attributes.forEach(attr => {
+		        attrMap[attr.getName()] = attr.getValue();
+		    });
+		
+		    currentUser.name = attrMap.name || "User";
+		    currentUser.email = attrMap.email || "unknown@example.com";
+		    currentUser.avatar = currentUser.name[0].toUpperCase();
+		
+		    updateUserDisplay();
+		    showPage('dashboard-page');
+			});
 		        });
 		    } else {
 		        showPage('login-page');
