@@ -75,9 +75,9 @@ cognitoUser.getUserAttributes(function (err, attributes) {
 
 		// ======= GLOBAL USER DATA =======
 		let currentUser = {
-		    name: 'John Doe',
-		    email: 'john.doe@example.com',
-		    avatar: 'JD'
+		    name: 'Celestia Chen',
+		    email: 'celestia2425@hotmail.com',
+		    avatar: 'CC'
 		};
 		
 		// ======= PAGE NAVIGATION =======
