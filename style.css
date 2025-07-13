@@ -338,6 +338,7 @@
             align-items: center;
             gap: 10px;
             cursor: pointer;
+            underline: none;
             transition: background-color 0.2s ease;
             border-bottom: 1px solid rgba(0, 0, 0, 0.05);
         }
@@ -628,3 +629,90 @@
             -ms-overflow-style: none;
             scrollbar-width: none;
         }
+
+       /* File List Styles */
+       #file-list-container {
+           width: 100%;
+           margin-top: 20px;
+       }
+       
+       .file-list-header {
+           display: flex;
+           justify-content: space-between;
+           align-items: center;
+           margin-bottom: 15px;
+       }
+       
+       .storage-stats {
+           color: #6b7280;
+           font-size: 14px;
+       }
+       
+       #file-list {
+           max-height: 300px;
+           overflow-y: auto;
+           border: 1px solid rgba(0, 0, 0, 0.1);
+           border-radius: 8px;
+           padding: 10px;
+       }
+       
+       .file-item {
+           display: flex;
+           align-items: center;
+           padding: 10px;
+           border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+       }
+       
+       .file-item:last-child {
+           border-bottom: none;
+       }
+       
+       .file-name {
+           flex: 1;
+           white-space: nowrap;
+           overflow: hidden;
+           text-overflow: ellipsis;
+       }
+       
+       .file-size {
+           width: 80px;
+           text-align: right;
+           color: #6b7280;
+           font-size: 13px;
+           margin: 0 15px;
+       }
+       
+       .file-actions button {
+           background: none;
+           border: none;
+           color: #667eea;
+           cursor: pointer;
+           font-size: 13px;
+           margin-left: 10px;
+       }
+       
+       .file-actions button:hover {
+           text-decoration: underline;
+       }
+       
+       .file-actions button.delete {
+           color: #ef4444;
+       }
+       
+       .upload-progress {
+           color: #6b7280;
+           padding: 10px;
+           font-size: 14px;
+       }
+       
+       .upload-success {
+           color: #10b981;
+           padding: 10px;
+           font-size: 14px;
+       }
+       
+       .upload-error {
+           color: #ef4444;
+           padding: 10px;
+           font-size: 14px;
+       }
