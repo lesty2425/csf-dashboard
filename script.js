@@ -12,6 +12,30 @@ document.addEventListener('DOMContentLoaded', function () {
 		        showPage('login-page');
 		        return;
 		    }
+
+		// Get user attributes
+            cognitoUser.getUserAttributes(function(err, attributes) {
+                if (err) {
+                    console.error("Error getting attributes:", err);
+                    updateUserDisplay({}); // Will use fallback values
+                    return;
+                }
+                
+                // Process attributes
+                const userData = {};
+                attributes.forEach(attr => {
+                    if (attr.getName() === 'name') userData.name = attr.getValue();
+                    if (attr.getName() === 'email') userData.email = attr.getValue();
+                });
+                
+                updateUserDisplay(userData);
+            });
+        });
+    } else {
+        // No user - redirect to login
+        window.location.href = '/login.html';
+    }
+		});
 		
 // Set credentials
 const idToken = session.getIdToken().getJwtToken();
