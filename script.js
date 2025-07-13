@@ -19,19 +19,23 @@ setAWSCredentials(idToken);
 		
 // Set user info
 cognitoUser.getUserAttributes(function (err, attributes) {
-		    if (err) {
+		if (err) {
 		        console.error("Error getting user attributes:", err);
 		        return;
 		    }
 		
-		    const attrMap = {};
+		const attrMap = {};
 		    attributes.forEach(attr => {
 		        attrMap[attr.getName()] = attr.getValue();
 		    });
 		
-		    currentUser.name = attrMap.name || "User";
-		    currentUser.email = attrMap.email || "unknown@example.com";
-		    currentUser.avatar = currentUser.name[0].toUpperCase();
+		currentUser.name = attrMap.name || "User";
+		currentUser.email = attrMap.email || "unknown@example.com";
+		currentUser.avatar = currentUser.name
+		        .split(' ')
+		        .map(w => w[0])
+		        .join('')
+		        .toUpperCase();
 		
 		    updateUserDisplay();
 		    showPage('dashboard-page');
