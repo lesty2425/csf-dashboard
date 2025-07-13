@@ -222,43 +222,81 @@ function uploadFile(file) {
                 console.error("Upload error:", err);
             } else {
                 console.log("Upload success:", data);
+                listUserFiles(userId);
             }
         });
     });
 }
 
-function downloadFile(fileName) {
-    getUserPrefix(function(userId) {
-        if (!userId) return;
-        const s3 = new AWS.S3();
-        const params = {
-            Bucket: BUCKET_NAME,
-            Key: `${userId}/${fileName}`
-        };
-        s3.getSignedUrl('getObject', params, function(err, url) {
-            if (err) {
-                console.error("Download error:", err);
-            } else {
-                window.open(url);
-            }
-        });
+function listUserFiles(userId) {
+  const s3 = new AWS.S3();
+  const params = {
+    Bucket: BUCKET_NAME,
+    Prefix: `${userId}/`
+  };
+
+  s3.listObjectsV2(params, function(err, data) {
+    if (err) {
+      console.error("List error:", err);
+      return;
+    }
+
+    const fileList = data.Contents || [];
+    let totalSizeBytes = 0;
+
+    // Clear current display
+    const storageBox = document.getElementById("your-file-list-box-id"); // replace with actual element ID
+    storageBox.innerHTML = '';
+
+    // Render file names
+    fileList.forEach(obj => {
+      const fileName = obj.Key.split('/').pop(); // remove prefix
+      if (fileName) {
+        const item = document.createElement("div");
+        item.textContent = fileName;
+        storageBox.appendChild(item);
+        totalSizeBytes += obj.Size;
+      }
     });
+
+    // Update usage bar
+    updateUsage(fileList.length, 0, (totalSizeBytes / (1024 ** 3)).toFixed(2)); // GB
+  });
 }
 
-function deleteFile(fileName) {
-    getUserPrefix(function(userId) {
-        if (!userId) return;
-        const s3 = new AWS.S3();
-        const params = {
-            Bucket: BUCKET_NAME,
-            Key: `${userId}/${fileName}`
-        };
-        s3.deleteObject(params, function(err, data) {
-            if (err) {
-                console.error("Delete error:", err);
-            } else {
-                console.log("Delete success");
-            }
-        });
-    });
-}
+
+// function downloadFile(fileName) {
+//     getUserPrefix(function(userId) {
+//         if (!userId) return;
+//         const s3 = new AWS.S3();
+//         const params = {
+//             Bucket: BUCKET_NAME,
+//             Key: `${userId}/${fileName}`
+//         };
+//         s3.getSignedUrl('getObject', params, function(err, url) {
+//             if (err) {
+//                 console.error("Download error:", err);
+//             } else {
+//                 window.open(url);
+//             }
+//         });
+//     });
+// }
+
+// function deleteFile(fileName) {
+//     getUserPrefix(function(userId) {
+//         if (!userId) return;
+//         const s3 = new AWS.S3();
+//         const params = {
+//             Bucket: BUCKET_NAME,
+//             Key: `${userId}/${fileName}`
+//         };
+//         s3.deleteObject(params, function(err, data) {
+//             if (err) {
+//                 console.error("Delete error:", err);
+//             } else {
+//                 console.log("Delete success");
+//             }
+//         });
+//     });
+// }
