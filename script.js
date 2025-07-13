@@ -20,40 +20,38 @@ setAWSCredentials(idToken);
 // Set user info
 cognitoUser.getUserAttributes(function (err, attributes) {
 			    if (err) {
-			        console.error("Error getting user attributes:", err);
-			        // Use fallback values if attributes can't be fetched
-			        currentUser.name = "User";
-			        currentUser.email = "user@example.com";
-			        currentUser.avatar = "U";
-			        updateUserDisplay();
-			        showPage('dashboard-page');
+				console.error("Error getting user attributes:", err);
+			        // Set fallback values
+			        document.getElementById('user-name').textContent = "User";
+			        document.getElementById('user-email').textContent = "user@example.com";
+			        document.getElementById('user-avatar').textContent = "U";
 			        return;
 			    }
 			    
-			    const attrMap = {};
-			    attributes.forEach(attr => {
-			        attrMap[attr.getName()] = attr.getValue();
-			    });
-			    
 			    // Set user data from Cognito attributes
-			    currentUser.name = `${attrMap.given_name || attrMap.name || 'User'}`.trim();
-			    currentUser.email = attrMap.email || "user@example.com";
+			    const userData = {
+			        name: '',
+			        email: '',
+			    };
 			    
-			    // Create avatar from name initials
-			    currentUser.avatar = currentUser.name
-			        .split(' ')
-			        .filter(w => w.length > 0)  // Filter out empty strings
-			        .map(w => w[0])
-			        .join('')
-			        .toUpperCase();
+			    attributes.forEach(attribute => {
+			        if (attribute.getName() === 'name') {
+			            userData.name = attribute.getValue();
+			        } else if (attribute.getName() === 'email') {
+			            userData.email = attribute.getValue();
+			        }
+			    });
+			
+			    // Set display values
+			    document.getElementById('user-name').textContent = userData.name || "User";
+			    document.getElementById('user-email').textContent = userData.email || "user@example.com";
 			    
-			    // If no initials, use first letter of email
-			    if (!currentUser.avatar && currentUser.email) {
-			        currentUser.avatar = currentUser.email[0].toUpperCase();
-			    }
+			    // Generate avatar initials
+			    const avatarText = userData.name 
+			        ? userData.name.split(' ').map(n => n[0]).join('').toUpperCase()
+			        : (userData.email ? userData.email[0].toUpperCase() : "U");
 			    
-			    updateUserDisplay();
-			    showPage('dashboard-page');
+			    document.getElementById('user-avatar').textContent = avatarText;
 			});
 		    } else {
 		        showPage('login-page');
