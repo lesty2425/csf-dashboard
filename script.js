@@ -118,35 +118,42 @@ async function handleFileUpload(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
 
-  console.log("Files selected:", files); 
+  const s3 = new AWS.S3();
+  const uploadResults = [];
 
-try {
-    const s3 = new AWS.S3();
-    const uploadPromises = files.map(file => {
-      const key = `private/${currentUser.identityId}/${file.name}`;
-      console.log("Uploading file:", file.name, "to key:", key); // Debug
-      
-      return s3.upload({
+  for (const file of files) {
+    try {
+      const params = {
         Bucket: BUCKET_NAME,
-        Key: key,
+        Key: `private/${currentUser.identityId}/${file.name}`,
         Body: file,
         ContentType: file.type
-      }).promise()
-        .then(data => {
-          console.log("Upload success:", data.Location); // Debug
-          return data;
-        });
-    });
+      };
 
-    await Promise.all(uploadPromises);
-    alert(`${files.length} files uploaded successfully!`);
-    refreshFileList();
-  } catch (err) {
-    console.error("Upload failed:", err);
-    alert(`Upload failed: ${err.message}`);
+      const data = await s3.upload(params).promise();
+      uploadResults.push({ success: true, file: file.name });
+      console.log("Uploaded:", data.Location);
+    } catch (err) {
+      uploadResults.push({ success: false, file: file.name, error: err.message });
+      console.error("Error uploading", file.name, err);
+    }
   }
-}
 
+  // Show upload summary
+  const successful = uploadResults.filter(r => r.success).length;
+  if (successful > 0) {
+    alert(`${successful}/${files.length} files uploaded successfully`);
+    refreshFileList();
+  }
+  
+  if (successful !== files.length) {
+    const failed = uploadResults.filter(r => !r.success);
+    console.log("Failed uploads:", failed);
+    alert(`Some files failed to upload. Check console for details.`);
+  }
+
+  document.getElementById('fileInput').value = ''; // Reset input
+}
 
 async function refreshFileList() {
   try {
