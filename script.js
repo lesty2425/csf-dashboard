@@ -1,150 +1,277 @@
-// ===== AWS SDK Initialization =====
-AWS.config.region = REGION;
-
-// ===== AWS Cognito & S3 Config =====
 const REGION = "ap-southeast-1";
 const USER_POOL_ID = "ap-southeast-1_2GP2VeU1m";
 const CLIENT_ID = "14ogj9aammkrug4l8fk4s48pg7";
 const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5";
 const BUCKET_NAME = "cs-notesfiles";
-const COGNITO_DOMAIN = "csf-dashboard.auth.ap-southeast-1.amazoncognito.com"; // Changed this
 
-let currentUser = { name: '', email: '', avatar: '' };
-
-// ===== Init Cognito Hosted UI Auth =====
-const authData = {
-  ClientId: CLIENT_ID,
-  AppWebDomain: COGNITO_DOMAIN, // Fixed: Removed user pool ID from domain
-  TokenScopesArray: ["email", "openid", "profile"],
-  RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/",
-  RedirectUriSignOut: "http://bit.ly/409eKBJ",
-  IdentityProvider: "COGNITO" // Explicitly set identity provider
-};
-
-const auth = new AmazonCognitoIdentity.CognitoAuth(authData);
-auth.userhandler = {
-  onSuccess: function (result) {
-    console.log("Auth success");
-    const session = auth.getSignInUserSession();
-    if (!session) {
-      console.error("No session found");
-      showPage("login-page");
-      return;
-    }
-
-    const idToken = session.getIdToken().getJwtToken();
-    if (!idToken) {
-      console.error("No ID token found");
-      showPage("login-page");
-      return;
-    }
-
-    setAWSCredentials(idToken);
-
-    try {
-      const payload = parseJwt(idToken);
-      currentUser = {
-        name: payload.name || "",
-        email: payload.email || "",
-        avatar: (payload.name || "U").charAt(0).toUpperCase()
-      };
-      updateUserDisplay();
-      showPage("dashboard-page");
-    } catch (e) {
-      console.error("Error processing user data:", e);
-      showPage("login-page");
-    }
-  },
-  onFailure: function (err) {
-    console.error("Auth failure:", err);
-    showPage("login-page");
-  }
-};
-
-// Parse Cognito response if we have a code in the URL
-if (window.location.href.includes("code=")) {
-  try {
-    auth.parseCognitoWebResponse(window.location.href);
-  } catch (e) {
-    console.error("Error parsing Cognito response:", e);
-    showPage("login-page");
-  }
-}
-
-// ===== Improved setAWSCredentials function =====
-function setAWSCredentials(idTokenJwt) {
-  return new Promise((resolve, reject) => {
-    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-      IdentityPoolId: IDENTITY_POOL_ID,
-      Logins: {
-        [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idTokenJwt
-      }
-    });
-
-    AWS.config.credentials.refresh(error => {
-      if (error) {
-        console.error("AWS creds error", error);
-        reject(error);
-      } else {
-        console.log("AWS credentials set successfully");
-        resolve();
-      }
-    });
-  });
-}
-
-// Rest of your functions remain the same (parseJwt, getUserPrefix, updateUserDisplay, showPage, signOut)
-
-// ===== Improved DOM Ready Init =====
+// ======= INIT ON PAGE LOAD =======
 document.addEventListener('DOMContentLoaded', function () {
-  // Your existing DOM event handlers...
+	if (cognitoUser) {
+		cognitoUser.getSession(function (err, session) {
+		    if (err || !session.isValid()) {
+		        showPage('login-page');
+		        return;
+		    }
+		
+// Set credentials
+const idToken = session.getIdToken().getJwtToken();
+setAWSCredentials(idToken);
+		
+// Set user info
+cognitoUser.getUserAttributes(function (err, attributes) {
+			    if (err) {
+			        console.error("Error getting user attributes:", err);
+			        // Use fallback values if attributes can't be fetched
+			        currentUser.name = "User";
+			        currentUser.email = "user@example.com";
+			        currentUser.avatar = "U";
+			        updateUserDisplay();
+			        showPage('dashboard-page');
+			        return;
+			    }
+			    
+			    const attrMap = {};
+			    attributes.forEach(attr => {
+			        attrMap[attr.getName()] = attr.getValue();
+			    });
+			    
+			    // Set user data from Cognito attributes
+			    currentUser.name = `${attrMap.given_name || attrMap.name || 'User'}`.trim();
+			    currentUser.email = attrMap.email || "user@example.com";
+			    
+			    // Create avatar from name initials
+			    currentUser.avatar = currentUser.name
+			        .split(' ')
+			        .filter(w => w.length > 0)  // Filter out empty strings
+			        .map(w => w[0])
+			        .join('')
+			        .toUpperCase();
+			    
+			    // If no initials, use first letter of email
+			    if (!currentUser.avatar && currentUser.email) {
+			        currentUser.avatar = currentUser.email[0].toUpperCase();
+			    }
+			    
+			    updateUserDisplay();
+			    showPage('dashboard-page');
+			});
+		    } else {
+		        showPage('login-page');
+		    }
+		});
 
-  // Improved User Pool session check
-  const poolData = { UserPoolId: USER_POOL_ID, ClientId: CLIENT_ID };
-  const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-  const cognitoUser = userPool.getCurrentUser();
+        const poolData = {
+		    UserPoolId: USER_POOL_ID,
+		    ClientId: CLIENT_ID
+		};
+		
+		const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
+		let cognitoUser = userPool.getCurrentUser();
+		
+		// Configure AWS credentials using Cognito Identity
+		function setAWSCredentials(idTokenJwt) {
+		    AWS.config.region = REGION;
+		    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+		        IdentityPoolId: IDENTITY_POOL_ID,
+		        Logins: {
+		            [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idTokenJwt
+		        }
+		    });
+		
+		    AWS.config.credentials.get(function (err) {
+		        if (err) {
+		            console.error("Error getting AWS credentials", err);
+		        } else {
+		            console.log("AWS credentials set");
+		        }
+		    });
+		}
 
-  if (!cognitoUser) {
-    showPage('login-page');
-    return;
-  }
+		// ======= GLOBAL USER DATA =======
+		let currentUser = {
+		    name: '',
+		    email: '',
+		    avatar: ''
+		};
+		
+		// ======= PAGE NAVIGATION =======
+		function showPage(pageId) {
+		    document.querySelectorAll('.page').forEach(page => {
+		        page.classList.remove('active');
+		    });
+		    document.getElementById(pageId).classList.add('active');
+		}
+		
+		// ======= USER DROPDOWN MENU =======
+		document.getElementById('user-profile').addEventListener('click', function (e) {
+		    e.stopPropagation();
+		    const dropdown = document.getElementById('dropdown-menu');
 
-  cognitoUser.getSession(function (err, session) {
-    if (err || !session?.isValid?.()) {
-      console.error("Invalid session:", err);
-      showPage('login-page');
-      return;
-    }
+		    this.classList.toggle('open');
+		    dropdown.classList.toggle('open');
+		});
+		
+		// Close dropdown if click outside
+		document.addEventListener('click', function () {
 
-    const idToken = session.getIdToken().getJwtToken();
-    if (!idToken) {
-      console.error("No ID token in session");
-      showPage('login-page');
-      return;
-    }
+			if (dropdown.classList.contains('open')) {
+                		dropdown.classList.remove('open');
+                		profile.classList.remove('open');
+            		}
 
-    setAWSCredentials(idToken)
-      .then(() => {
-        cognitoUser.getUserAttributes(function (err, attributes) {
-          if (err) {
-            console.error("Error getting user attributes:", err);
-            showPage('login-page');
-            return;
-          }
-          
-          currentUser = {
-            name: attributes.find(a => a.getName() === 'name')?.getValue() || '',
-            email: attributes.find(a => a.getName() === 'email')?.getValue() || '',
-            avatar: (attributes.find(a => a.getName() === 'name')?.getValue() || 'U').charAt(0).toUpperCase()
-          };
-          
-          updateUserDisplay();
-          showPage("dashboard-page");
+		    //document.getElementById('dropdown-menu').classList.remove('open');
+		    //document.getElementById('user-profile').classList.remove('open');
+		});
+		
+		// ======= TABS =======
+		const tabs = document.querySelectorAll('.tab');
+		const tabContents = document.querySelectorAll('.tab-content');
+
+		tabs.forEach(tab => {
+		    tab.addEventListener('click', () => {
+		        tabs.forEach(t => t.classList.remove('active'));
+		        tabContents.forEach(c => c.classList.remove('active'));
+		
+		        tab.classList.add('active');
+		        const target = tab.getAttribute('data-tab');
+		        document.getElementById(target).classList.add('active');
+		    });
+		});
+		
+		// ======= PROFILE FORM SUBMIT =======
+		document.getElementById('profile-form').addEventListener('submit', function (e) {
+		    e.preventDefault();
+		    const name = document.getElementById('profile-full-name').value;
+		    const email = document.getElementById('profile-email-input').value;
+		
+		    currentUser.name = name;
+		    currentUser.email = email;
+		    currentUser.avatar = name.split(' ').map(n => n[0]).join('').toUpperCase();
+		
+		    updateUserDisplay();
+		    alert('Profile updated successfully!');
+		});
+		
+		// ======= UPDATE USER DISPLAY =======
+		function updateUserDisplay() {
+		    document.getElementById('user-name').textContent = currentUser.name;
+		    document.getElementById('user-email').textContent = currentUser.email;
+		    document.getElementById('user-avatar').textContent = currentUser.avatar;
+		
+		    document.getElementById('profile-name').textContent = currentUser.name;
+		    document.getElementById('profile-email').textContent = currentUser.email;
+		    document.getElementById('profile-avatar').textContent = currentUser.avatar;
+		    document.getElementById('profile-full-name').value = currentUser.name;
+		    document.getElementById('profile-email-input').value = currentUser.email;
+		}
+		
+		// ======= SIGN OUT =======
+		function signOut() {
+		    if (confirm('Are you sure you want to sign out?')) {
+		        showPage('login-page');
+		        document.getElementById('login-form').reset();
+		        // TODO: Sign out from AWS Cognito here
+		    }
+		}
+		
+		
+		// ======= USAGE STATS BAR =======
+		function updateUsage(files, notes, storage) {
+		    document.getElementById('files-progress').value = (files / 1000) * 100;
+		    document.getElementById('notes-progress').value = (notes / 500) * 100;
+		    document.getElementById('storage-progress').value = (storage / 50) * 100;
+		
+		    document.getElementById('files-count').textContent = `${files} / 1,000`;
+		    document.getElementById('notes-count').textContent = `${notes} / 500`;
+		    document.getElementById('storage-count').textContent = `${storage} GB / 50 GB`;
+		}
+		
+        document.querySelectorAll('.upload-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.target.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    e.target.style.transform = '';
+                }, 150);
+            });
         });
-      })
-      .catch(err => {
-        console.error("Error setting AWS credentials:", err);
-        showPage('login-page');
-      });
-  });
-});
+
+		// ======= BUTTON ANIMATION =======
+		document.querySelectorAll('.upload-btn').forEach(btn => {
+		    btn.addEventListener('click', e => {
+		        e.target.style.transform = 'scale(0.95)';
+		        setTimeout(() => e.target.style.transform = '', 150);
+		    });
+		});
+
+
+        // ======= S3 KEY HELPER =======
+        function getUserPrefix(callback) {
+            AWS.config.credentials.get(function (err) {
+                if (err) {
+                    console.error("Unable to get AWS credentials", err);
+                    callback(null);
+                } else {
+                    const identityId = AWS.config.credentials.identityId;
+                    const userId = identityId.split(':')[1]; // get Cognito sub ID
+                    callback(userId);
+                }
+            });
+        }
+
+        // ======= UPLOAD FILE EXAMPLE (with folder path) =======
+        function uploadFile(file) {
+            getUserPrefix(function(userId) {
+                if (!userId) return;
+                const s3 = new AWS.S3();
+                const params = {
+                    Bucket: BUCKET_NAME,
+                    Key: `${userId}/${file.name}`,
+                    Body: file
+                };
+                s3.putObject(params, function(err, data) {
+                    if (err) {
+                        console.error("Upload error:", err);
+                    } else {
+                        console.log("Upload success:", data);
+                    }
+                });
+            });
+        }
+
+        // ======= DOWNLOAD FILE EXAMPLE (with folder path) =======
+        function downloadFile(fileName) {
+            getUserPrefix(function(userId) {
+                if (!userId) return;
+                const s3 = new AWS.S3();
+                const params = {
+                    Bucket: BUCKET_NAME,
+                    Key: `${userId}/${fileName}`
+                };
+                s3.getSignedUrl('getObject', params, function(err, url) {
+                    if (err) {
+                        console.error("Download error:", err);
+                    } else {
+                        window.open(url);
+                    }
+                });
+            });
+        }
+
+        // ======= DELETE FILE EXAMPLE (with folder path) =======
+        function deleteFile(fileName) {
+            getUserPrefix(function(userId) {
+                if (!userId) return;
+                const s3 = new AWS.S3();
+                const params = {
+                    Bucket: BUCKET_NAME,
+                    Key: `${userId}/${fileName}`
+                };
+                s3.deleteObject(params, function(err, data) {
+                    if (err) {
+                        console.error("Delete error:", err);
+                    } else {
+                        console.log("Delete success");
+                    }
+                });
+            });
+        }
