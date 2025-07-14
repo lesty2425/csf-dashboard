@@ -14,14 +14,25 @@ const authData = {
 
 const auth = new AmazonCognitoIdentity.CognitoAuth(authData);
 auth.userhandler = {
-    onSuccess: function(result) {
-        console.log("Cognito Auth success");
-        location.reload(); // Reload so getCurrentUser() can be picked up
-    },
-    onFailure: function(err) {
-        console.error("Cognito Auth failure:", err);
-        showPage('login-page');
-    }
+  onSuccess: function(result) {
+    console.log("Cognito Auth success");
+
+    const idToken = auth.getSignInUserSession().getIdToken().getJwtToken();
+    setAWSCredentials(idToken);
+
+    const payload = parseJwt(idToken);
+    currentUser.name = payload.name || "";
+    currentUser.email = payload.email || "";
+    currentUser.avatar = currentUser.name.charAt(0).toUpperCase();
+
+    updateUserDisplay();
+    showPage("dashboard-page");
+  },
+
+  onFailure: function(err) {
+    console.error("Cognito Auth failure:", err);
+    showPage("login-page");
+  }
 };
 
 // Check if coming back from Hosted UI login
@@ -90,7 +101,12 @@ function showPage(pageId) {
 
 // Initialize on page load
 document.addEventListener('DOMContentLoaded', function () {
-    const cognitoUser = userPool.getCurrentUser();
+    let idToken = null;
+
+    if (auth.getSignInUserSession()) {
+        idToken = auth.getSignInUserSession().getIdToken().getJwtToken();
+        setAWSCredentials(idToken);
+    }
 
     if (!cognitoUser) {
         console.warn("No Cognito user found");
@@ -193,21 +209,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
 // Sign out function
 function signOut() {
-    if (confirm('Are you sure you want to sign out?')) {
-        const user = userPool.getCurrentUser();
-        if (user) {
-            user.signOut();
-            console.log("Signed out from Cognito");
-        } else {
-            console.warn("No Cognito user found at signout");
-        }
+    const authData = {
+        ClientId: CLIENT_ID,
+        AppWebDomain: "ap-southeast-1_2GP2VeU1m.auth.ap-southeast-1.amazoncognito.com",
+        TokenScopesArray: ["email", "openid", "profile"],
+        RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/",
+        RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/"
+    };
 
-        currentUser = { name: '', email: '', avatar: '' };
-        showPage('login-page');
-        window.location.href = "https://bit.ly/409eKBJ";
-    }
+    const auth = new AmazonCognitoIdentity.CognitoAuth(authData);
+    auth.signOut();
 }
-
 
 // Usage stats
 function updateUsage(files, notes, storage) {
@@ -443,7 +455,28 @@ function deleteFile(fileName) {
     });
 }
 
+function parseJwt(token) {
+    try {
+        const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+        const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
+            '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
+        ).join(''));
+        return JSON.parse(jsonPayload);
+    } catch (e) {
+        console.error("Failed to parse token", e);
+        return {};
+    }
+}
 
+const idToken = auth.getSignInUserSession().getIdToken().getJwtToken();
+setAWSCredentials(idToken);
+
+const payload = parseJwt(idToken);
+currentUser.name = payload.name || "";
+currentUser.email = payload.email || "";
+currentUser.avatar = currentUser.name.charAt(0).toUpperCase();
+
+updateUserDisplay();
 
 // function downloadFile(fileName) {
 //     getUserPrefix(function(userId) {
