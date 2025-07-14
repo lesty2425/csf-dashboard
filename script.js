@@ -4,6 +4,31 @@ const CLIENT_ID = "14ogj9aammkrug4l8fk4s48pg7";
 const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5";
 const BUCKET_NAME = "cs-notesfiles";
 
+const authData = {
+    ClientId: CLIENT_ID,
+    AppWebDomain: "ap-southeast-1_2GP2VeU1m.auth.ap-southeast-1.amazoncognito.com", // no https
+    TokenScopesArray: ["email", "openid", "profile"],
+    RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/", // your page
+    RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/"
+};
+
+const auth = new AmazonCognitoIdentity.CognitoAuth(authData);
+auth.userhandler = {
+    onSuccess: function(result) {
+        console.log("Cognito Auth success");
+        location.reload(); // Reload so getCurrentUser() can be picked up
+    },
+    onFailure: function(err) {
+        console.error("Cognito Auth failure:", err);
+        showPage('login-page');
+    }
+};
+
+// Check if coming back from Hosted UI login
+if (window.location.href.includes("code=")) {
+    auth.parseCognitoWebResponse(window.location.href);
+}
+
 // Initialize Cognito User Pool
 const poolData = {
     UserPoolId: USER_POOL_ID,
