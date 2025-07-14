@@ -118,23 +118,35 @@ async function handleFileUpload(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
 
-  try {
+  console.log("Files selected:", files); 
+
+try {
     const s3 = new AWS.S3();
-    await Promise.all(files.map(file => {
+    const uploadPromises = files.map(file => {
+      const key = `private/${currentUser.identityId}/${file.name}`;
+      console.log("Uploading file:", file.name, "to key:", key); // Debug
+      
       return s3.upload({
         Bucket: BUCKET_NAME,
-        Key: `private/${currentUser.identityId}/${file.name}`,
+        Key: key,
         Body: file,
         ContentType: file.type
-      }).promise();
-    }));
-    alert(`${files.length} files uploaded`);
+      }).promise()
+        .then(data => {
+          console.log("Upload success:", data.Location); // Debug
+          return data;
+        });
+    });
+
+    await Promise.all(uploadPromises);
+    alert(`${files.length} files uploaded successfully!`);
     refreshFileList();
   } catch (err) {
     console.error("Upload failed:", err);
-    alert("Upload failed. Check console for details.");
+    alert(`Upload failed: ${err.message}`);
   }
 }
+
 
 async function refreshFileList() {
   try {
