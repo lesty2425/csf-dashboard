@@ -114,31 +114,88 @@ function initFileManager() {
   }
 }
 
+// ==== testing file upload
+async function testS3Connection() {
+  try {
+    const s3 = new AWS.S3();
+    console.log("Testing S3 connection...");
+    
+    // Test listing objects
+    const listResult = await s3.listObjectsV2({
+      Bucket: BUCKET_NAME,
+      Prefix: `private/${currentUser.identityId}/`,
+      MaxKeys: 1
+    }).promise();
+    console.log("List test successful:", listResult);
+    
+    // Test uploading a small file
+    const testContent = "This is a test file";
+    const uploadResult = await s3.upload({
+      Bucket: BUCKET_NAME,
+      Key: `private/${currentUser.identityId}/test-file.txt`,
+      Body: testContent,
+      ContentType: 'text/plain'
+    }).promise();
+    console.log("Upload test successful:", uploadResult.Location);
+    
+    alert("S3 connection test completed! Check console for details.");
+  } catch (error) {
+    console.error("S3 TEST FAILED:", error);
+    alert(`S3 TEST FAILED: ${error.message}\nCheck console for details.`);
+  }
+}
+
+// Call this after initAuth() in your DOMContentLoaded
+document.addEventListener('DOMContentLoaded', async () => {
+  await initAuth();
+  initUI();
+  await testS3Connection(); // Add this line temporarily
+});
+
+
 async function handleFileUpload(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
 
-  const s3 = new AWS.S3();
-  const uploadResults = [];
+  console.log("=== UPLOAD START ===");
+  console.log("User identityId:", currentUser.identityId);
+  console.log("Files to upload:", files);
 
-  for (const file of files) {
-    try {
-      const params = {
-        Bucket: BUCKET_NAME,
-        Key: `private/${currentUser.identityId}/${file.name}`,
-        Body: file,
-        ContentType: file.type
-      };
+  try {
+    const s3 = new AWS.S3();
+    const uploadResults = [];
 
-      const data = await s3.upload(params).promise();
-      uploadResults.push({ success: true, file: file.name });
-      console.log("Uploaded:", data.Location);
-    } catch (err) {
-      uploadResults.push({ success: false, file: file.name, error: err.message });
-      console.error("Error uploading", file.name, err);
+    for (const file of files) {
+      const key = `private/${currentUser.identityId}/${file.name}`;
+      console.log(`Uploading ${file.name} to ${key}`);
+      
+      try {
+        const data = await s3.upload({
+          Bucket: BUCKET_NAME,
+          Key: key,
+          Body: file,
+          ContentType: file.type
+        }).promise();
+        
+        console.log("Upload success:", data);
+        uploadResults.push({ success: true, file: file.name, data });
+      } catch (err) {
+        console.error("Upload failed for", file.name, err);
+        uploadResults.push({ success: false, file: file.name, error: err });
+      }
     }
-  }
 
+    console.log("=== UPLOAD RESULTS ===", uploadResults);
+    alert(`Upload completed. ${uploadResults.filter(r => r.success).length}/${files.length} succeeded`);
+    
+    // Force refresh with detailed logging
+    await refreshFileList();
+    document.getElementById('fileInput').value = '';
+  } catch (error) {
+    console.error("Global upload error:", error);
+    alert(`Upload failed completely: ${error.message}`);
+  }
+}
   // Show upload summary
   const successful = uploadResults.filter(r => r.success).length;
   if (successful > 0) {
