@@ -1,34 +1,59 @@
+// ===== AWS SDK Initialization =====
+AWS.config.region = REGION;
+
 // ===== AWS Cognito & S3 Config =====
 const REGION = "ap-southeast-1";
 const USER_POOL_ID = "ap-southeast-1_2GP2VeU1m";
 const CLIENT_ID = "14ogj9aammkrug4l8fk4s48pg7";
 const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5";
 const BUCKET_NAME = "cs-notesfiles";
+const COGNITO_DOMAIN = "csf-dashboard.auth.ap-southeast-1.amazoncognito.com"; // Changed this
 
 let currentUser = { name: '', email: '', avatar: '' };
 
 // ===== Init Cognito Hosted UI Auth =====
 const authData = {
   ClientId: CLIENT_ID,
-  AppWebDomain: "ap-southeast-1_2GP2VeU1m.auth.ap-southeast-1.amazoncognito.com",
+  AppWebDomain: COGNITO_DOMAIN, // Fixed: Removed user pool ID from domain
   TokenScopesArray: ["email", "openid", "profile"],
   RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/",
-  RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/"
+  RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/",
+  IdentityProvider: "COGNITO" // Explicitly set identity provider
 };
 
 const auth = new AmazonCognitoIdentity.CognitoAuth(authData);
 auth.userhandler = {
   onSuccess: function (result) {
-    const idToken = auth.getSignInUserSession().getIdToken().getJwtToken();
+    console.log("Auth success");
+    const session = auth.getSignInUserSession();
+    if (!session) {
+      console.error("No session found");
+      showPage("login-page");
+      return;
+    }
+
+    const idToken = session.getIdToken().getJwtToken();
+    if (!idToken) {
+      console.error("No ID token found");
+      showPage("login-page");
+      return;
+    }
+
     setAWSCredentials(idToken);
 
-    const payload = parseJwt(idToken);
-    currentUser.name = payload.name || "";
-    currentUser.email = payload.email || "";
-    currentUser.avatar = currentUser.name.charAt(0).toUpperCase();
-
-    updateUserDisplay();
-    showPage("dashboard-page");
+    try {
+      const payload = parseJwt(idToken);
+      currentUser = {
+        name: payload.name || "",
+        email: payload.email || "",
+        avatar: (payload.name || "U").charAt(0).toUpperCase()
+      };
+      updateUserDisplay();
+      showPage("dashboard-page");
+    } catch (e) {
+      console.error("Error processing user data:", e);
+      showPage("login-page");
+    }
   },
   onFailure: function (err) {
     console.error("Auth failure:", err);
@@ -36,102 +61,45 @@ auth.userhandler = {
   }
 };
 
+// Parse Cognito response if we have a code in the URL
 if (window.location.href.includes("code=")) {
-  auth.parseCognitoWebResponse(window.location.href);
-}
-
-// ===== Utils =====
-function setAWSCredentials(idTokenJwt) {
-  AWS.config.region = REGION;
-  AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-    IdentityPoolId: IDENTITY_POOL_ID,
-    Logins: {
-      [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idTokenJwt
-    }
-  });
-
-  AWS.config.credentials.get(function (err) {
-    if (err) console.error("AWS creds error", err);
-    else console.log("AWS credentials set");
-  });
-}
-
-function parseJwt(token) {
   try {
-    const base64 = token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
-    const jsonPayload = decodeURIComponent(atob(base64).split('').map(c =>
-      '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)
-    ).join(''));
-    return JSON.parse(jsonPayload);
+    auth.parseCognitoWebResponse(window.location.href);
   } catch (e) {
-    console.error("Failed to parse token", e);
-    return {};
+    console.error("Error parsing Cognito response:", e);
+    showPage("login-page");
   }
 }
 
-function getUserPrefix(callback) {
-  AWS.config.credentials.get(function (err) {
-    if (err) {
-      console.error("Unable to get AWS credentials", err);
-      callback(null);
-    } else {
-      const identityId = AWS.config.credentials.identityId;
-      const userId = identityId.split(':')[1];
-      callback(userId);
-    }
-  });
-}
-
-function updateUserDisplay() {
-  document.getElementById('user-name').textContent = currentUser.name || "User";
-  document.getElementById('user-email').textContent = currentUser.email || "user@example.com";
-  document.getElementById('user-avatar').textContent = currentUser.avatar || "U";
-}
-
-function showPage(pageId) {
-  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
-  const target = document.getElementById(pageId);
-  if (target) target.classList.add('active');
-}
-
-function signOut() {
-  auth.signOut();
-}
-
-// ===== DOM Ready Init =====
-document.addEventListener('DOMContentLoaded', function () {
-  // Dropdown logic
-  const profileElement = document.getElementById('user-profile');
-  const dropdownElement = document.getElementById('dropdown-menu');
-
-  if (profileElement && dropdownElement) {
-    profileElement.addEventListener('click', function (e) {
-      e.stopPropagation();
-      this.classList.toggle('open');
-      dropdownElement.classList.toggle('open');
-    });
-
-    document.addEventListener('click', function (e) {
-      if (!e.target.closest('#user-profile')) {
-        dropdownElement.classList.remove('open');
-        profileElement.classList.remove('open');
+// ===== Improved setAWSCredentials function =====
+function setAWSCredentials(idTokenJwt) {
+  return new Promise((resolve, reject) => {
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+      IdentityPoolId: IDENTITY_POOL_ID,
+      Logins: {
+        [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idTokenJwt
       }
     });
-  }
 
-  // Tab switching
-  document.querySelectorAll('.tab').forEach(tab => {
-    tab.addEventListener('click', function () {
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-
-      this.classList.add('active');
-      const targetId = this.getAttribute('data-tab');
-      document.getElementById(targetId)?.classList.add('active');
+    AWS.config.credentials.refresh(error => {
+      if (error) {
+        console.error("AWS creds error", error);
+        reject(error);
+      } else {
+        console.log("AWS credentials set successfully");
+        resolve();
+      }
     });
   });
+}
 
-  // User Pool session check
+// Rest of your functions remain the same (parseJwt, getUserPrefix, updateUserDisplay, showPage, signOut)
+
+// ===== Improved DOM Ready Init =====
+document.addEventListener('DOMContentLoaded', function () {
+  // Your existing DOM event handlers...
+
+  // Improved User Pool session check
   const poolData = { UserPoolId: USER_POOL_ID, ClientId: CLIENT_ID };
   const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
   const cognitoUser = userPool.getCurrentUser();
@@ -142,22 +110,41 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   cognitoUser.getSession(function (err, session) {
-    if (err || !session.isValid()) {
+    if (err || !session?.isValid?.()) {
+      console.error("Invalid session:", err);
       showPage('login-page');
       return;
     }
 
     const idToken = session.getIdToken().getJwtToken();
-    setAWSCredentials(idToken);
+    if (!idToken) {
+      console.error("No ID token in session");
+      showPage('login-page');
+      return;
+    }
 
-    cognitoUser.getUserAttributes(function (err, attributes) {
-      if (!err) {
-        currentUser.name = attributes.find(a => a.getName() === 'name')?.getValue() || '';
-        currentUser.email = attributes.find(a => a.getName() === 'email')?.getValue() || '';
-        currentUser.avatar = currentUser.name?.charAt(0).toUpperCase() || 'U';
-      }
-      updateUserDisplay();
-      showPage("dashboard-page");
-    });
+    setAWSCredentials(idToken)
+      .then(() => {
+        cognitoUser.getUserAttributes(function (err, attributes) {
+          if (err) {
+            console.error("Error getting user attributes:", err);
+            showPage('login-page');
+            return;
+          }
+          
+          currentUser = {
+            name: attributes.find(a => a.getName() === 'name')?.getValue() || '',
+            email: attributes.find(a => a.getName() === 'email')?.getValue() || '',
+            avatar: (attributes.find(a => a.getName() === 'name')?.getValue() || 'U').charAt(0).toUpperCase()
+          };
+          
+          updateUserDisplay();
+          showPage("dashboard-page");
+        });
+      })
+      .catch(err => {
+        console.error("Error setting AWS credentials:", err);
+        showPage('login-page');
+      });
   });
 });
