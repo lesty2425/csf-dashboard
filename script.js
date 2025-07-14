@@ -17,7 +17,7 @@ const authData = {
   AppWebDomain: COGNITO_DOMAIN, // Fixed: Removed user pool ID from domain
   TokenScopesArray: ["email", "openid", "profile"],
   RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/",
-  RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/",
+  RedirectUriSignOut: "http://bit.ly/409eKBJ",
   IdentityProvider: "COGNITO" // Explicitly set identity provider
 };
 
