@@ -151,14 +151,26 @@ try {
 async function refreshFileList() {
   try {
     const s3 = new AWS.S3();
+    console.log("Refreshing file list for identity:", currentUser.identityId); // Debug
+    
     const data = await s3.listObjectsV2({
       Bucket: BUCKET_NAME,
       Prefix: `private/${currentUser.identityId}/`
     }).promise();
 
-    displayFiles(data.Contents?.filter(file => !file.Key.endsWith('/')) || []);
+    console.log("S3 response:", data); // Debug
+    
+    if (data.Contents && data.Contents.length > 0) {
+      const files = data.Contents.filter(file => !file.Key.endsWith('/'));
+      console.log("Filtered files:", files); // Debug
+      displayFiles(files);
+    } else {
+      console.log("No files found in bucket");
+      displayFiles([]);
+    }
   } catch (err) {
     console.error("File list error:", err);
+    alert("Error loading files. Check console for details.");
   }
 }
 
