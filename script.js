@@ -30,6 +30,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initAuth() {
+  console.log("Initializing auth... current cognitoUser:", cognitoUser);
   const userPool = new AmazonCognitoIdentity.CognitoUserPool({
     UserPoolId: USER_POOL_ID,
     ClientId: CLIENT_ID
@@ -64,6 +65,8 @@ async function initAuth() {
 }
 
 async function setAWSCredentials(idToken) {
+  console.log("Setting AWS credentials with token:", idToken.substring(0, 20) + "..."); // Debug
+  
   AWS.config.region = REGION;
   AWS.config.credentials = new AWS.CognitoIdentityCredentials({
     IdentityPoolId: IDENTITY_POOL_ID,
@@ -73,11 +76,15 @@ async function setAWSCredentials(idToken) {
   });
 
   try {
+    console.log("Getting credentials...");
     await AWS.config.credentials.getPromise();
+    console.log("Credentials obtained:", AWS.config.credentials);
+    
     currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
+    console.log("identityId set:", currentUser.identityId);
   } catch (err) {
-    console.error("Error setting AWS credentials:", err);
-    throw err;
+    console.error("Error getting credentials:", err);
+    throw new Error("Failed to get AWS credentials: " + err.message);
   }
 }
 
@@ -338,6 +345,25 @@ window.signOut = function() {
 // Initialize AWS SDK (must be in global scope)
 const AWS = window.AWS;
 AWS.config.region = REGION;
+
+console.log("AWS config:", AWS.config);
+
+// clear cached credentials
+AWS.config.credentials = null;
+AWS.config.credentials = new AWS.CognitoIdentityCredentials(...);
+
+// verifying cognito token
+if (!idToken || typeof idToken !== 'string') {
+  throw new Error("Invalid Cognito token");
+}
+
+// check typos 
+console.log({
+  REGION,
+  USER_POOL_ID,
+  IDENTITY_POOL_ID,
+  CLIENT_ID
+});
 
 // Make functions available globally
 window.downloadFile = downloadFile;
