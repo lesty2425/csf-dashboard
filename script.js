@@ -164,15 +164,55 @@ function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId)?.classList.add('active');
 }
+// ======= Tab Switching =======
+function initTabs() {
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      // Remove active class from all
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      // Activate clicked tab
+      this.classList.add('active');
+      const targetId = this.getAttribute('data-tab');
+      document.getElementById(targetId)?.classList.add('active');
+    });
+  });
+}
 
-function signOut() {
+// ======= Dropdown Menu =======
+function initDropdown() {
+  const profile = document.getElementById('user-profile');
+  const dropdown = document.getElementById('dropdown-menu');
+
+  if (profile && dropdown) {
+    // Toggle menu on profile click
+    profile.addEventListener('click', function(e) {
+      e.stopPropagation();
+      this.classList.toggle('open');
+      dropdown.classList.toggle('open');
+    });
+
+    // Close when clicking outside
+    document.addEventListener('click', function() {
+      if (dropdown.classList.contains('open')) {
+        dropdown.classList.remove('open');
+        profile.classList.remove('open');
+      }
+    });
+  }
+}
+
+window.signOut = function() {
   const userPool = new AmazonCognitoIdentity.CognitoUserPool({
     UserPoolId: USER_POOL_ID,
     ClientId: CLIENT_ID
   });
+  
   userPool.getCurrentUser()?.signOut();
-  window.location.reload();
-}
+  AWS.config.credentials.clearCachedId();
+  window.location.href = "https://bit.ly/409eKBJ";
+};
 
 // Initialize AWS SDK (must be in global scope)
 const AWS = window.AWS;
