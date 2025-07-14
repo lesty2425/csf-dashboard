@@ -11,16 +11,22 @@ let currentUser = {
   identityId: ''
 };
 
-// ======= INITIALIZATION =======
-
+// Add the missing initUI function
 function initUI() {
   initTabs();
   initDropdown();
+  updateUserDisplay();
 }
 
+// ======= INITIALIZATION =======
 document.addEventListener('DOMContentLoaded', async () => {
-  await initAuth();
-  initUI();
+  try {
+    await initAuth();
+    initUI();
+  } catch (error) {
+    console.error("Initialization error:", error);
+    showPage('login-page');
+  }
 });
 
 async function initAuth() {
@@ -30,12 +36,19 @@ async function initAuth() {
   });
 
   const cognitoUser = userPool.getCurrentUser();
-  if (!cognitoUser) return showPage('login-page');
+  if (!cognitoUser) {
+    showPage('login-page');
+    return;
+  }
 
   try {
     const session = await new Promise((resolve, reject) => {
       cognitoUser.getSession((err, session) => {
-        err || !session?.isValid?.() ? reject(err) : resolve(session);
+        if (err || !session?.isValid?.()) {
+          reject(err || new Error("Invalid session"));
+        } else {
+          resolve(session);
+        }
       });
     });
 
@@ -59,32 +72,46 @@ async function setAWSCredentials(idToken) {
     }
   });
 
-  await AWS.config.credentials.getPromise();
-  currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
+  try {
+    await AWS.config.credentials.getPromise();
+    currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
+  } catch (err) {
+    console.error("Error setting AWS credentials:", err);
+    throw err;
+  }
 }
 
 async function loadUserAttributes(cognitoUser) {
-  const attributes = await new Promise((resolve, reject) => {
-    cognitoUser.getUserAttributes((err, attrs) => err ? reject(err) : resolve(attrs));
-  });
+  try {
+    const attributes = await new Promise((resolve, reject) => {
+      cognitoUser.getUserAttributes((err, attrs) => err ? reject(err) : resolve(attrs));
+    });
 
-  const attrMap = {};
-  attributes.forEach(attr => attrMap[attr.getName()] = attr.getValue());
+    const attrMap = {};
+    attributes.forEach(attr => attrMap[attr.getName()] = attr.getValue());
 
-  currentUser = {
-    ...currentUser,
-    name: attrMap.name || attrMap.email.split('@')[0],
-    email: attrMap.email,
-    avatar: (attrMap.name?.[0] || attrMap.email?.[0] || 'U').toUpperCase()
-  };
-  updateUserDisplay();
+    currentUser = {
+      ...currentUser,
+      name: attrMap.name || attrMap.email.split('@')[0],
+      email: attrMap.email,
+      avatar: (attrMap.name?.[0] || attrMap.email?.[0] || 'U').toUpperCase()
+    };
+  } catch (err) {
+    console.error("Error loading user attributes:", err);
+    throw err;
+  }
 }
 
 // ======= FILE OPERATIONS =======
 function initFileManager() {
-  document.getElementById('fileInput').addEventListener('change', handleFileUpload);
-  document.getElementById('refreshFiles').addEventListener('click', refreshFileList);
-  refreshFileList();
+  const fileInput = document.getElementById('fileInput');
+  const refreshBtn = document.getElementById('refreshFiles');
+  
+  if (fileInput && refreshBtn) {
+    fileInput.addEventListener('change', handleFileUpload);
+    refreshBtn.addEventListener('click', refreshFileList);
+    refreshFileList();
+  }
 }
 
 async function handleFileUpload(e) {
@@ -92,8 +119,9 @@ async function handleFileUpload(e) {
   if (!files.length) return;
 
   try {
+    const s3 = new AWS.S3();
     await Promise.all(files.map(file => {
-      return new AWS.S3().upload({
+      return s3.upload({
         Bucket: BUCKET_NAME,
         Key: `private/${currentUser.identityId}/${file.name}`,
         Body: file,
@@ -110,12 +138,13 @@ async function handleFileUpload(e) {
 
 async function refreshFileList() {
   try {
-    const data = await new AWS.S3().listObjectsV2({
+    const s3 = new AWS.S3();
+    const data = await s3.listObjectsV2({
       Bucket: BUCKET_NAME,
       Prefix: `private/${currentUser.identityId}/`
     }).promise();
 
-    displayFiles(data.Contents.filter(file => !file.Key.endsWith('/')));
+    displayFiles(data.Contents?.filter(file => !file.Key.endsWith('/')) || []);
   } catch (err) {
     console.error("File list error:", err);
   }
@@ -123,18 +152,21 @@ async function refreshFileList() {
 
 function displayFiles(files) {
   const container = document.getElementById('file-list');
-  container.innerHTML = files.map(file => `
-    <div class="file-item">
-      <span>${file.Key.split('/').pop()}</span>
-      <button onclick="downloadFile('${file.Key}')">Download</button>
-      <button onclick="deleteFile('${file.Key}')">Delete</button>
-    </div>
-  `).join('');
+  if (container) {
+    container.innerHTML = files.map(file => `
+      <div class="file-item">
+        <span>${file.Key.split('/').pop()}</span>
+        <button onclick="downloadFile('${file.Key.replace(/'/g, "\\'")}')">Download</button>
+        <button onclick="deleteFile('${file.Key.replace(/'/g, "\\'")}')">Delete</button>
+      </div>
+    `).join('');
+  }
 }
 
 async function downloadFile(key) {
   try {
-    const url = await new AWS.S3().getSignedUrlPromise('getObject', {
+    const s3 = new AWS.S3();
+    const url = await s3.getSignedUrlPromise('getObject', {
       Bucket: BUCKET_NAME,
       Key: key,
       Expires: 60
@@ -142,6 +174,7 @@ async function downloadFile(key) {
     window.open(url, '_blank');
   } catch (err) {
     console.error("Download error:", err);
+    alert("Download failed. Check console for details.");
   }
 }
 
@@ -149,30 +182,40 @@ async function deleteFile(key) {
   if (!confirm(`Delete ${key.split('/').pop()} permanently?`)) return;
   
   try {
-    await new AWS.S3().deleteObject({
+    const s3 = new AWS.S3();
+    await s3.deleteObject({
       Bucket: BUCKET_NAME,
       Key: key
     }).promise();
     refreshFileList();
   } catch (err) {
     console.error("Delete error:", err);
+    alert("Delete failed. Check console for details.");
   }
 }
 
 // ======= UI FUNCTIONS =======
 function updateUserDisplay() {
-  document.getElementById('user-name').textContent = currentUser.name;
-  document.getElementById('user-email').textContent = currentUser.email;
-  document.getElementById('user-avatar').textContent = currentUser.avatar;
+  const nameEl = document.getElementById('user-name');
+  const emailEl = document.getElementById('user-email');
+  const avatarEl = document.getElementById('user-avatar');
+  
+  if (nameEl) nameEl.textContent = currentUser.name;
+  if (emailEl) emailEl.textContent = currentUser.email;
+  if (avatarEl) avatarEl.textContent = currentUser.avatar;
 }
 
 function showPage(pageId) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.getElementById(pageId)?.classList.add('active');
 }
+
 // ======= Tab Switching =======
 function initTabs() {
-  document.querySelectorAll('.tab').forEach(tab => {
+  const tabs = document.querySelectorAll('.tab');
+  if (tabs.length === 0) return;
+
+  tabs.forEach(tab => {
     tab.addEventListener('click', function() {
       // Remove active class from all
       document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -215,11 +258,18 @@ window.signOut = function() {
     ClientId: CLIENT_ID
   });
   
-  userPool.getCurrentUser()?.signOut();
-  AWS.config.credentials.clearCachedId();
+  const cognitoUser = userPool.getCurrentUser();
+  if (cognitoUser) {
+    cognitoUser.signOut();
+    AWS.config.credentials.clearCachedId();
+  }
   window.location.href = "https://bit.ly/409eKBJ";
 };
 
 // Initialize AWS SDK (must be in global scope)
 const AWS = window.AWS;
 AWS.config.region = REGION;
+
+// Make functions available globally
+window.downloadFile = downloadFile;
+window.deleteFile = deleteFile;
