@@ -12,6 +12,12 @@ let currentUser = {
 };
 
 // ======= INITIALIZATION =======
+
+function initUI() {
+  initTabs();
+  initDropdown();
+}
+
 document.addEventListener('DOMContentLoaded', async () => {
   await initAuth();
   initUI();
