@@ -11,7 +11,7 @@ const poolData = {
 };
 
 const userPool = new AmazonCognitoIdentity.CognitoUserPool(poolData);
-let cognitoUser = userPool.getCurrentUser();
+// let cognitoUser = userPool.getCurrentUser();
 
 // Global User Data
 let currentUser = {
@@ -64,51 +64,57 @@ function showPage(pageId) {
 }
 
 // Initialize on page load
-document.addEventListener('DOMContentLoaded', function() {
-    if (cognitoUser) {
-        cognitoUser.getSession(function(err, session) {
-            if (err || !session.isValid()) {
-                showPage('login-page');
+document.addEventListener('DOMContentLoaded', function () {
+    const cognitoUser = userPool.getCurrentUser();
+
+    if (!cognitoUser) {
+        console.warn("No Cognito user found");
+        showPage('login-page');
+        return;
+    }
+    
+    console.log("Getting current user:", cognitoUser);
+
+    cognitoUser.getSession(function (err, session) {
+        console.log("Cognito session:", session);
+        console.log("ID token:", session.getIdToken().getJwtToken());
+        
+        if (err || !session.isValid()) {
+            console.error("Session error or invalid:", err);
+            showPage('login-page');
+            return;
+        }
+
+        const idToken = session.getIdToken().getJwtToken();
+        setAWSCredentials(idToken);
+
+        cognitoUser.getUserAttributes(function (err, attributes) {
+            if (err) {
+                console.error("Error getting attributes:", err);
+                updateUserDisplay(); // fallback
                 return;
             }
 
-            // Set AWS credentials
-            const idToken = session.getIdToken().getJwtToken();
-            setAWSCredentials(idToken);
+            currentUser = { name: '', email: '', avatar: '' };
 
-            // Get user attributes
-            cognitoUser.getUserAttributes(function(err, attributes) {
-                if (err) {
-                    console.error("Error getting user attributes:", err);
-                    updateUserDisplay();
-                    return;
-                }
-
-                // Reset user data
-                currentUser = { name: '', email: '', avatar: '' };
-
-                // Extract Cognito attributes
-                attributes.forEach(attr => {
-                    if (attr.getName() === 'name') currentUser.name = attr.getValue();
-                    if (attr.getName() === 'email') currentUser.email = attr.getValue();
-                });
-
-                // Generate avatar initials
-                currentUser.avatar = currentUser.name
-                    .split(' ')
-                    .map(word => word[0] || '')
-                    .join('')
-                    .toUpperCase() || 
-                    (currentUser.email ? currentUser.email[0].toUpperCase() : 'U');
-
-                updateUserDisplay();
-                showPage('dashboard-page');
+            attributes.forEach(attr => {
+                if (attr.getName() === 'name') currentUser.name = attr.getValue();
+                if (attr.getName() === 'email') currentUser.email = attr.getValue();
             });
+
+            currentUser.avatar = currentUser.name
+                .split(' ')
+                .map(word => word[0] || '')
+                .join('')
+                .toUpperCase() ||
+                (currentUser.email ? currentUser.email[0].toUpperCase() : 'U');
+
+            updateUserDisplay();
+            showPage('dashboard-page');
         });
-    } else {
-        showPage('login-page');
-    }
+    });
 });
+
 
 //dropdown meny funtion
 document.addEventListener('DOMContentLoaded', function() {
