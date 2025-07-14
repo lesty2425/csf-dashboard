@@ -6,9 +6,9 @@ const BUCKET_NAME = "cs-notesfiles";
 
 const authData = {
     ClientId: CLIENT_ID,
-    AppWebDomain: "ap-southeast-1_2GP2VeU1m.auth.ap-southeast-1.amazoncognito.com", // no https
+    AppWebDomain: "ap-southeast-1_2GP2VeU1m.auth.ap-southeast-1.amazoncognito.com",
     TokenScopesArray: ["email", "openid", "profile"],
-    RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/", // your page
+    RedirectUriSignIn: "https://lesty2425.github.io/csf-dashboard/",
     RedirectUriSignOut: "https://lesty2425.github.io/csf-dashboard/"
 };
 
