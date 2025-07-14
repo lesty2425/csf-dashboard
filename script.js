@@ -169,15 +169,20 @@ document.addEventListener('DOMContentLoaded', function() {
 // Sign out function
 function signOut() {
     if (confirm('Are you sure you want to sign out?')) {
-        if (cognitoUser) {
-            cognitoUser.signOut();
+        const user = userPool.getCurrentUser();
+        if (user) {
+            user.signOut();
+            console.log("Signed out from Cognito");
+        } else {
+            console.warn("No Cognito user found at signout");
         }
+
         currentUser = { name: '', email: '', avatar: '' };
         showPage('login-page');
-        // Clear any existing session data
         window.location.href = "https://bit.ly/409eKBJ";
     }
 }
+
 
 // Usage stats
 function updateUsage(files, notes, storage) {
