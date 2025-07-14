@@ -348,23 +348,6 @@ AWS.config.region = REGION;
 
 console.log("AWS config:", AWS.config);
 
-// clear cached credentials
-AWS.config.credentials = null;
-AWS.config.credentials = new AWS.CognitoIdentityCredentials(...);
-
-// verifying cognito token
-if (!idToken || typeof idToken !== 'string') {
-  throw new Error("Invalid Cognito token");
-}
-
-// check typos 
-console.log({
-  REGION,
-  USER_POOL_ID,
-  IDENTITY_POOL_ID,
-  CLIENT_ID
-});
-
 // Make functions available globally
 window.downloadFile = downloadFile;
 window.deleteFile = deleteFile;
