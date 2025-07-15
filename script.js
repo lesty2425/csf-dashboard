@@ -17,6 +17,21 @@ let currentUser = {
   identityId: ''
 };
 
+
+function waitForLibraries() {
+    return new Promise((resolve) => {
+        function check() {
+            if (typeof AWS !== 'undefined' && typeof AmazonCognitoIdentity !== 'undefined' && typeof AmazonCognitoIdentity.CognitoAuth !== 'undefined') {
+                resolve();
+            } else {
+                setTimeout(check, 100);
+            }
+        }
+        check();
+    });
+}
+
+
 // ===== AWS & COGNITO INITIALIZATION =====
 const AWS = window.AWS;
 AWS.config.region = CONFIG.REGION;
