@@ -1,9 +1,15 @@
-const REGION = "ap-southeast-1";
-const USER_POOL_ID = "ap-southeast-1_2GP2VeU1m";
-const CLIENT_ID = "14ogj9aammkrug4l8fk4s48pg7";
-const IDENTITY_POOL_ID = "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5";
-const BUCKET_NAME = "cs-notesfiles";
+// ===== CONFIGURATION =====
+const CONFIG = {
+  REGION: "ap-southeast-1",
+  USER_POOL_ID: "ap-southeast-1_2GP2VeU1m",
+  CLIENT_ID: "14ogj9aammkrug4l8fk4s48pg7",
+  IDENTITY_POOL_ID: "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5",
+  BUCKET_NAME: "cs-notesfiles",
+  REDIRECT_URI: "https://lesty2425.github.io/csf-dashboard/",
+  COGNITO_DOMAIN: "ap-southeast-12gp2veu1m.auth.ap-southeast-1.amazoncognito.com"
+};
 
+// ===== GLOBAL STATE =====
 let currentUser = {
   name: '',
   email: '',
@@ -11,164 +17,86 @@ let currentUser = {
   identityId: ''
 };
 
-// Initialize AWS SDK (must be in global scope)
+// ===== AWS & COGNITO INITIALIZATION =====
 const AWS = window.AWS;
-AWS.config.region = REGION;
+AWS.config.region = CONFIG.REGION;
 
-console.log("AWS config:", AWS.config);
-
-// Add the missing initUI function
-function initUI() {
-  initTabs();
-  initDropdown();
-  updateUserDisplay();
-}
-
-// ======= INITIALIZATION =======
-document.addEventListener('DOMContentLoaded', async () => {
-  try {
-    await initAuth();
-    initUI();
-    // Test S3 connection after successful auth
-    await testS3Connection();
-  } catch (error) {
-    console.error("Initialization error:", error);
-    showPage('login-page');
-  }
+const auth = new AmazonCognitoIdentity.CognitoAuth({
+  ClientId: CONFIG.CLIENT_ID,
+  AppWebDomain: CONFIG.COGNITO_DOMAIN,
+  TokenScopesArray: ["email", "openid", "profile"],
+  RedirectUriSignIn: CONFIG.REDIRECT_URI,
+  RedirectUriSignOut: CONFIG.REDIRECT_URI
 });
 
-async function initAuth() {
-  console.log("Initializing auth...");
-  const userPool = new AmazonCognitoIdentity.CognitoUserPool({
-    UserPoolId: USER_POOL_ID,
-    ClientId: CLIENT_ID
-  });
-
-  const cognitoUser = userPool.getCurrentUser();
-  console.log("Current cognitoUser:", cognitoUser);
-  
-  if (!cognitoUser) {
-    showPage('login-page');
-    return;
-  }
-
-  try {
-    const session = await new Promise((resolve, reject) => {
-      cognitoUser.getSession((err, session) => {
-        if (err || !session?.isValid?.()) {
-          reject(err || new Error("Invalid session"));
-        } else {
-          resolve(session);
-        }
-      });
-    });
-
-    await setAWSCredentials(session.getIdToken().getJwtToken());
-    await loadUserAttributes(cognitoUser);
-    initFileManager();
-    showPage('dashboard-page');
-
-  } catch (err) {
-    console.error("Auth error:", err);
-    showPage('login-page');
-  }
-}
-
-async function setAWSCredentials(idToken) {
-  console.log("Setting AWS credentials with token:", idToken.substring(0, 20) + "..."); // Debug
-  
-  AWS.config.region = REGION;
-  AWS.config.credentials = new AWS.CognitoIdentityCredentials({
-    IdentityPoolId: IDENTITY_POOL_ID,
-    Logins: {
-      [`cognito-idp.${REGION}.amazonaws.com/${USER_POOL_ID}`]: idToken
+auth.userhandler = {
+  onSuccess: async function(result) {
+    try {
+      const session = auth.getSignInUserSession();
+      const idToken = session.getIdToken().getJwtToken();
+      
+      await setAWSCredentials(idToken);
+      await loadUserAttributes(session);
+      
+      initUI();
+      initFileManager();
+      showPage('dashboard-page');
+      
+      // Test S3 connection (remove in production if not needed)
+      await testS3Connection();
+    } catch (error) {
+      console.error("Authentication success handler error:", error);
+      showAuthError("Failed to initialize session");
+      showPage('login-page');
     }
-  });
-
-  try {
-    console.log("Getting credentials...");
-    await AWS.config.credentials.getPromise();
-    console.log("Credentials obtained:", AWS.config.credentials);
-    
-    currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
-    console.log("identityId set:", currentUser.identityId);
-  } catch (err) {
-    console.error("Error getting credentials:", err);
-    throw new Error("Failed to get AWS credentials: " + err.message);
+  },
+  onFailure: function(err) {
+    console.error("Authentication failure:", err);
+    showAuthError("Login failed. Please try again.");
+    showPage('login-page');
   }
-}
+};
 
-async function loadUserAttributes(cognitoUser) {
-  try {
-    const attributes = await new Promise((resolve, reject) => {
-      cognitoUser.getUserAttributes((err, attrs) => err ? reject(err) : resolve(attrs));
+// ===== CORE FUNCTIONS =====
+async function setAWSCredentials(idToken) {
+  return new Promise((resolve, reject) => {
+    AWS.config.credentials = new AWS.CognitoIdentityCredentials({
+      IdentityPoolId: CONFIG.IDENTITY_POOL_ID,
+      Logins: {
+        [`cognito-idp.${CONFIG.REGION}.amazonaws.com/${CONFIG.USER_POOL_ID}`]: idToken
+      }
     });
 
-    const attrMap = {};
-    attributes.forEach(attr => attrMap[attr.getName()] = attr.getValue());
-
-    currentUser = {
-      ...currentUser,
-      name: attrMap.name || attrMap.email.split('@')[0],
-      email: attrMap.email,
-      avatar: (attrMap.name?.[0] || attrMap.email?.[0] || 'U').toUpperCase()
-    };
-  } catch (err) {
-    console.error("Error loading user attributes:", err);
-    throw err;
-  }
+    AWS.config.credentials.get(err => {
+      if (err) {
+        console.error("AWS Credentials Error:", err);
+        reject(new Error("Failed to get AWS credentials"));
+      } else {
+        currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
+        console.log("AWS credentials set successfully");
+        resolve();
+      }
+    });
+  });
 }
 
-// ======= FILE OPERATIONS =======
-function initFileManager() {
-  const fileInput = document.getElementById('fileInput');
-  const refreshBtn = document.getElementById('refreshFiles');
-  
-  if (fileInput && refreshBtn) {
-    fileInput.addEventListener('change', handleFileUpload);
-    refreshBtn.addEventListener('click', refreshFileList);
-    refreshFileList();
-  }
-}
-
-// ==== testing file upload
-async function testS3Connection() {
-  // Check if credentials are available
-  if (!AWS.config.credentials || !AWS.config.credentials.identityId) {
-    console.error("AWS credentials not available");
-    alert("Authentication required. Please log in again.");
-    return;
-  }
-  
+async function loadUserAttributes(session) {
   try {
-    const s3 = new AWS.S3();
-    console.log("Testing S3 connection...");
-    
-    // Test listing objects
-    const listResult = await s3.listObjectsV2({
-      Bucket: BUCKET_NAME,
-      Prefix: `private/${currentUser.identityId}/`,
-      MaxKeys: 1
-    }).promise();
-    console.log("List test successful:", listResult);
-    
-    // Test uploading a small file
-    const testContent = "This is a test file";
-    const uploadResult = await s3.upload({
-      Bucket: BUCKET_NAME,
-      Key: `private/${currentUser.identityId}/test-file.txt`,
-      Body: testContent,
-      ContentType: 'text/plain'
-    }).promise();
-    console.log("Upload test successful:", uploadResult.Location);
-    
-    console.log("S3 connection test completed successfully!");
+    const payload = JSON.parse(atob(session.getIdToken().getJwtToken().split('.')[1]));
+    currentUser = {
+      name: payload.name || payload.email.split('@')[0],
+      email: payload.email,
+      avatar: (payload.name?.[0] || payload.email?.[0] || 'U').toUpperCase(),
+      identityId: currentUser.identityId
+    };
+    updateUserDisplay();
   } catch (error) {
-    console.error("S3 TEST FAILED:", error);
-    alert(`S3 TEST FAILED: ${error.message}\nCheck console for details.`);
+    console.error("Error loading user attributes:", error);
+    throw new Error("Failed to load user profile");
   }
 }
 
+// ===== FILE OPERATIONS =====
 async function handleFileUpload(e) {
   const files = Array.from(e.target.files);
   if (!files.length) return;
@@ -179,7 +107,7 @@ async function handleFileUpload(e) {
   for (const file of files) {
     try {
       const params = {
-        Bucket: BUCKET_NAME,
+        Bucket: CONFIG.BUCKET_NAME,
         Key: `private/${currentUser.identityId}/${file.name}`,
         Body: file,
         ContentType: file.type
@@ -204,32 +132,21 @@ async function handleFileUpload(e) {
   if (successful !== files.length) {
     const failed = uploadResults.filter(r => !r.success);
     console.log("Failed uploads:", failed);
-    alert(`Some files failed to upload. Check console for details.`);
+    alert(`${files.length - successful} files failed to upload`);
   }
 
-  document.getElementById('fileInput').value = ''; // Reset input
+  document.getElementById('fileInput').value = '';
 }
 
 async function refreshFileList() {
   try {
     const s3 = new AWS.S3();
-    console.log("Refreshing file list for identity:", currentUser.identityId); // Debug
-    
     const data = await s3.listObjectsV2({
-      Bucket: BUCKET_NAME,
+      Bucket: CONFIG.BUCKET_NAME,
       Prefix: `private/${currentUser.identityId}/`
     }).promise();
 
-    console.log("S3 response:", data); // Debug
-    
-    if (data.Contents && data.Contents.length > 0) {
-      const files = data.Contents.filter(file => !file.Key.endsWith('/'));
-      console.log("Filtered files:", files); // Debug
-      displayFiles(files);
-    } else {
-      console.log("No files found in bucket");
-      displayFiles([]);
-    }
+    displayFiles(data.Contents?.filter(file => !file.Key.endsWith('/')) || []);
   } catch (err) {
     console.error("File list error:", err);
     alert("Error loading files. Check console for details.");
@@ -253,7 +170,7 @@ async function downloadFile(key) {
   try {
     const s3 = new AWS.S3();
     const url = await s3.getSignedUrlPromise('getObject', {
-      Bucket: BUCKET_NAME,
+      Bucket: CONFIG.BUCKET_NAME,
       Key: key,
       Expires: 60
     });
@@ -270,7 +187,7 @@ async function deleteFile(key) {
   try {
     const s3 = new AWS.S3();
     await s3.deleteObject({
-      Bucket: BUCKET_NAME,
+      Bucket: CONFIG.BUCKET_NAME,
       Key: key
     }).promise();
     refreshFileList();
@@ -280,7 +197,42 @@ async function deleteFile(key) {
   }
 }
 
-// ======= UI FUNCTIONS =======
+// ===== UI FUNCTIONS =====
+function initUI() {
+  // Initialize tabs
+  document.querySelectorAll('.tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+      
+      this.classList.add('active');
+      const targetId = this.getAttribute('data-tab');
+      document.getElementById(targetId)?.classList.add('active');
+    });
+  });
+
+  // Initialize dropdown
+  const profile = document.getElementById('user-profile');
+  const dropdown = document.getElementById('dropdown-menu');
+  
+  if (profile && dropdown) {
+    profile.addEventListener('click', function(e) {
+      e.stopPropagation();
+      this.classList.toggle('open');
+      dropdown.classList.toggle('open');
+    });
+
+    document.addEventListener('click', function() {
+      if (dropdown.classList.contains('open')) {
+        dropdown.classList.remove('open');
+        profile.classList.remove('open');
+      }
+    });
+  }
+
+  updateUserDisplay();
+}
+
 function updateUserDisplay() {
   const nameEl = document.getElementById('user-name');
   const emailEl = document.getElementById('user-email');
@@ -296,62 +248,81 @@ function showPage(pageId) {
   document.getElementById(pageId)?.classList.add('active');
 }
 
-// ======= Tab Switching =======
-function initTabs() {
-  const tabs = document.querySelectorAll('.tab');
-  if (tabs.length === 0) return;
-
-  tabs.forEach(tab => {
-    tab.addEventListener('click', function() {
-      // Remove active class from all
-      document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-      
-      // Activate clicked tab
-      this.classList.add('active');
-      const targetId = this.getAttribute('data-tab');
-      document.getElementById(targetId)?.classList.add('active');
-    });
-  });
-}
-
-// ======= Dropdown Menu =======
-function initDropdown() {
-  const profile = document.getElementById('user-profile');
-  const dropdown = document.getElementById('dropdown-menu');
-
-  if (profile && dropdown) {
-    // Toggle menu on profile click
-    profile.addEventListener('click', function(e) {
-      e.stopPropagation();
-      this.classList.toggle('open');
-      dropdown.classList.toggle('open');
-    });
-
-    // Close when clicking outside
-    document.addEventListener('click', function() {
-      if (dropdown.classList.contains('open')) {
-        dropdown.classList.remove('open');
-        profile.classList.remove('open');
-      }
-    });
+function showAuthError(message) {
+  const errorDiv = document.getElementById('auth-error');
+  if (errorDiv) {
+    errorDiv.textContent = message;
+    errorDiv.style.display = 'block';
+  } else {
+    alert("Error: " + message);
   }
 }
 
-window.signOut = function() {
-  const userPool = new AmazonCognitoIdentity.CognitoUserPool({
-    UserPoolId: USER_POOL_ID,
-    ClientId: CLIENT_ID
-  });
+// ===== INITIALIZATION =====
+function initAuth() {
+  if (window.location.href.includes("code=")) {
+    auth.parseCognitoWebResponse(window.location.href);
+  } else {
+    const userPool = new AmazonCognitoIdentity.CognitoUserPool({
+      UserPoolId: CONFIG.USER_POOL_ID,
+      ClientId: CONFIG.CLIENT_ID
+    });
+    
+    if (!userPool.getCurrentUser()) {
+      showPage('login-page');
+    }
+  }
+}
+
+function initFileManager() {
+  const fileInput = document.getElementById('fileInput');
+  const refreshBtn = document.getElementById('refreshFiles');
   
-  const cognitoUser = userPool.getCurrentUser();
-  if (cognitoUser) {
-    cognitoUser.signOut();
-    AWS.config.credentials.clearCachedId();
+  if (fileInput && refreshBtn) {
+    fileInput.addEventListener('change', handleFileUpload);
+    refreshBtn.addEventListener('click', refreshFileList);
+    refreshFileList();
   }
-  window.location.href = "https://bit.ly/409eKBJ";
+}
+
+async function testS3Connection() {
+  try {
+    const s3 = new AWS.S3();
+    await s3.listObjectsV2({
+      Bucket: CONFIG.BUCKET_NAME,
+      Prefix: `private/${currentUser.identityId}/`,
+      MaxKeys: 1
+    }).promise();
+    console.log("S3 connection test successful");
+  } catch (error) {
+    console.error("S3 connection test failed:", error);
+    throw error;
+  }
+}
+
+// ===== EVENT LISTENERS =====
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize UI first
+  initUI();
+  
+  // Setup login button if on login page
+  const loginBtn = document.getElementById('login-button');
+  if (loginBtn) {
+    loginBtn.addEventListener('click', function() {
+      auth.getSession();
+    });
+  }
+  
+  // Then handle authentication
+  initAuth();
+});
+
+// ===== GLOBAL FUNCTIONS =====
+window.signOut = function() {
+  auth.signOut();
+  AWS.config.credentials.clearCachedId();
+  window.location.href = CONFIG.REDIRECT_URI;
 };
 
-// Make functions available globally
 window.downloadFile = downloadFile;
 window.deleteFile = deleteFile;
