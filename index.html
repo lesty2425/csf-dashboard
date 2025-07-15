@@ -118,6 +118,13 @@
             </section>
         </main>
     </div>
+    <script>
+        // Add this debugging first
+        console.log('AWS:', typeof AWS);
+        console.log('AmazonCognitoIdentity:', typeof AmazonCognitoIdentity);
+        console.log('CognitoAuth:', typeof AmazonCognitoIdentity?.CognitoAuth);
+        console.log('CognitoUserPool:', typeof AmazonCognitoIdentity?.CognitoUserPool);
+    </script>
     <script src="script.js"></script>
 </body>
 </html>
