@@ -53,12 +53,13 @@ auth.userhandler = {
       await setAWSCredentials(idToken);
       await loadUserAttributes(session);
       
+      // Test S3 connection (remove in production if not needed)
+      await loadUserAttributes(session);
       initUI();
       initFileManager();
       showPage('dashboard-page');
+
       
-      // Test S3 connection (remove in production if not needed)
-      await testS3Connection();
     } catch (error) {
       console.error("Authentication success handler error:", error);
       showAuthError("Failed to initialize session");
