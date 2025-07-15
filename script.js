@@ -86,6 +86,18 @@ async function setAWSCredentials(idToken) {
   });
 
   try {
+    // Force credential refresh
+    await AWS.config.credentials.refreshPromise();
+    console.log("Credentials refreshed:", AWS.config.credentials);
+    
+    currentUser.identityId = AWS.config.credentials.identityId.split(':')[1];
+  } catch (err) {
+    console.error("Error refreshing credentials:", err);
+    throw err;
+  }
+}
+
+  try {
     console.log("Getting credentials...");
     await AWS.config.credentials.getPromise();
     console.log("Credentials obtained:", AWS.config.credentials);
@@ -133,6 +145,13 @@ function initFileManager() {
 
 // ==== testing file upload
 async function testS3Connection() {
+  // Check if credentials are available
+  if (!AWS.config.credentials || !AWS.config.credentials.identityId) {
+    console.error("AWS credentials not available");
+    alert("Authentication required. Please log in again.");
+    return;
+  }
+  
   try {
     const s3 = new AWS.S3();
     console.log("Testing S3 connection...");
