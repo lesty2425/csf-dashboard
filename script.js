@@ -11,6 +11,12 @@ let currentUser = {
   identityId: ''
 };
 
+// Initialize AWS SDK (must be in global scope)
+const AWS = window.AWS;
+AWS.config.region = REGION;
+
+console.log("AWS config:", AWS.config);
+
 // Add the missing initUI function
 function initUI() {
   initTabs();
@@ -23,6 +29,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await initAuth();
     initUI();
+    // Test S3 connection after successful auth
+    await testS3Connection();
   } catch (error) {
     console.error("Initialization error:", error);
     showPage('login-page');
@@ -30,13 +38,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 async function initAuth() {
-  console.log("Initializing auth... current cognitoUser:", cognitoUser);
+  console.log("Initializing auth...");
   const userPool = new AmazonCognitoIdentity.CognitoUserPool({
     UserPoolId: USER_POOL_ID,
     ClientId: CLIENT_ID
   });
 
   const cognitoUser = userPool.getCurrentUser();
+  console.log("Current cognitoUser:", cognitoUser);
+  
   if (!cognitoUser) {
     showPage('login-page');
     return;
@@ -145,19 +155,12 @@ async function testS3Connection() {
     }).promise();
     console.log("Upload test successful:", uploadResult.Location);
     
-    alert("S3 connection test completed! Check console for details.");
+    console.log("S3 connection test completed successfully!");
   } catch (error) {
     console.error("S3 TEST FAILED:", error);
     alert(`S3 TEST FAILED: ${error.message}\nCheck console for details.`);
   }
 }
-
-// Call this after initAuth() in your DOMContentLoaded
-document.addEventListener('DOMContentLoaded', async () => {
-  await initAuth();
-  initUI();
-  await testS3Connection(); // Add this line temporarily
-});
 
 async function handleFileUpload(e) {
   const files = Array.from(e.target.files);
@@ -341,12 +344,6 @@ window.signOut = function() {
   }
   window.location.href = "https://bit.ly/409eKBJ";
 };
-
-// Initialize AWS SDK (must be in global scope)
-const AWS = window.AWS;
-AWS.config.region = REGION;
-
-console.log("AWS config:", AWS.config);
 
 // Make functions available globally
 window.downloadFile = downloadFile;
