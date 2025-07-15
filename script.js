@@ -5,7 +5,7 @@ const CONFIG = {
   CLIENT_ID: "14ogj9aammkrug4l8fk4s48pg7",
   IDENTITY_POOL_ID: "ap-southeast-1:71a3f001-c3fb-457e-b454-9354d2267ba5",
   BUCKET_NAME: "cs-notesfiles",
-  REDIRECT_URI: "https://lesty2425.github.io/csf-dashboard/",
+  REDIRECT_URI: "https://main.d1gzxpmu3efm8i.amplifyapp.com/",
   COGNITO_DOMAIN: "ap-southeast-12gp2veu1m.auth.ap-southeast-1.amazoncognito.com"
 };
 
