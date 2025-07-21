@@ -1,0 +1,2105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudSafe Notes - Storage & Notes</title>
+    <!-- AWS Cognito SDKs -->
+    <script src="https://sdk.amazonaws.com/js/aws-sdk-2.1563.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/amazon-cognito-identity-js@6.3.12/dist/amazon-cognito-identity.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+
+        /* Auth Pages Styles - removed as not needed */
+
+        .dashboard {
+            display: flex;
+            height: 100vh;
+        }
+
+        /* Main App Styles */
+        .sidebar {
+            width: 280px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-right: 1px solid rgba(255, 255, 255, 0.2);
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 20px rgba(0, 0, 0, 0.1);
+        }
+
+        .logo {
+            padding: 30px 25px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .csnlogo {
+            width: 100%;
+        }
+
+        .logo h1 {
+            color: #4a5568;
+            font-size: 24px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo-icon {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: bold;
+        }
+
+        .usage-stats {
+            padding: 25px;
+            margin-top: auto;
+            border-top: 1px solid rgba(0, 0, 0, 0.1);
+            background: rgba(255, 255, 255, 0.3);
+        }
+
+        .usage-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .usage-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .usage-bar {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+            overflow: hidden;
+            margin-top: 8px;
+            appearance: none;
+            border: none;
+        }
+
+        .usage-bar::-webkit-progress-bar {
+            background: rgba(0, 0, 0, 0.1);
+            border-radius: 3px;
+        }
+
+        .usage-bar::-webkit-progress-value {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+        }
+
+        .usage-bar::-moz-progress-bar {
+            background: linear-gradient(90deg, #667eea, #764ba2);
+            border-radius: 3px;
+        }
+
+        .main-content {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background: rgba(255, 255, 255, 0.9);
+            backdrop-filter: blur(10px);
+        }
+
+        .header {
+            padding: 20px 30px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        }
+
+        .tabs {
+            display: flex;
+            gap: 2px;
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 8px;
+            padding: 4px;
+        }
+
+        .tab {
+            padding: 12px 24px;
+            background: transparent;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 500;
+            color: #6b7280;
+            transition: all 0.2s ease;
+            position: relative;
+        }
+
+        .tab.active {
+            background: white;
+            color: #4a5568;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+
+        .tab:hover:not(.active) {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .user-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 8px 16px;
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 12px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            transition: all 0.2s ease;
+            position: relative;
+            cursor: pointer;
+        }
+
+        .user-profile:hover {
+            background: rgba(255, 255, 255, 0.9);
+            transform: translateY(-1px);
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 16px;
+        }
+
+        .user-info {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .user-name {
+            font-weight: 600;
+            color: #374151;
+            font-size: 14px;
+        }
+
+        .user-email {
+            font-size: 12px;
+            color: #6b7280;
+        }
+
+        .dropdown-arrow {
+            margin-left: 8px;
+            font-size: 12px;
+            color: #6b7280;
+            transition: transform 0.2s ease;
+        }
+
+        .user-profile.open .dropdown-arrow {
+            transform: rotate(180deg);
+        }
+
+        .dropdown-menu {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: white;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+            min-width: 200px;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: all 0.2s ease;
+            margin-top: 8px;
+        }
+
+        .dropdown-menu.open {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .dropdown-item {
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            text-decoration: none;
+            transition: background-color 0.2s ease;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .dropdown-item:last-child {
+            border-bottom: none;
+        }
+
+        .dropdown-item:hover {
+            background: rgba(102, 126, 234, 0.05);
+        }
+
+        .dropdown-item:first-child {
+            border-top-left-radius: 8px;
+            border-top-right-radius: 8px;
+        }
+
+        .dropdown-item:last-child {
+            border-bottom-left-radius: 8px;
+            border-bottom-right-radius: 8px;
+        }
+
+        .dropdown-item span {
+            font-size: 14px;
+            color: #4a5568;
+        }
+
+        .dropdown-item.danger:hover {
+            background: rgba(239, 68, 68, 0.05);
+        }
+
+        .dropdown-item.danger span {
+            color: #ef4444;
+        }
+
+        .content-area {
+            flex: 1;
+            padding: 30px;
+            overflow-y: auto;
+        }
+
+        .tab-content {
+            display: none;
+            animation: fadeIn 0.3s ease;
+        }
+
+        .tab-content.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .storage-content, .notes-content {
+            background: rgba(255, 255, 255, 0.7);
+            border-radius: 16px;
+            padding: 40px;
+            text-align: center;
+            border: 2px dashed rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .storage-content:hover {
+            border-color: #667eea;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .notes-content:hover {
+            border-color: #764ba2;
+            background: rgba(255, 255, 255, 0.9);
+        }
+
+        .empty-state {
+            color: #6b7280;
+            font-size: 18px;
+            margin-bottom: 20px;
+        }
+
+        .empty-icon {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 32px;
+            opacity: 0.8;
+        }
+
+        .upload-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-top: 20px;
+        }
+
+        .upload-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        /* Profile & Settings Pages */
+        .profile-container, .settings-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            max-width: 600px;
+            margin: 0 auto;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-header {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+        }
+
+        .profile-avatar {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-weight: 600;
+            font-size: 32px;
+        }
+
+        .profile-info h1 {
+            color: #4a5568;
+            margin-bottom: 5px;
+        }
+
+        .profile-info p {
+            color: #6b7280;
+        }
+
+        .settings-section {
+            margin-bottom: 30px;
+        }
+
+        .settings-section h2 {
+            color: #4a5568;
+            margin-bottom: 15px;
+            font-size: 20px;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px 0;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .settings-item:last-child {
+            border-bottom: none;
+        }
+
+        .settings-label {
+            color: #4a5568;
+            font-weight: 500;
+        }
+
+        .settings-description {
+            color: #6b7280;
+            font-size: 14px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 50px;
+            height: 24px;
+            background: #d1d5db;
+            border-radius: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .toggle-switch.active {
+            background: #667eea;
+        }
+
+        .toggle-switch::before {
+            content: '';
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease;
+        }
+
+        .toggle-switch.active::before {
+            transform: translateX(26px);
+        }
+
+        .back-btn {
+            background: rgba(102, 126, 234, 0.1);
+            color: #667eea;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+            margin-bottom: 20px;
+        }
+
+        .back-btn:hover {
+            background: rgba(102, 126, 234, 0.2);
+        }
+
+        .save-btn {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .save-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+        }
+
+        .danger-zone {
+            background: rgba(239, 68, 68, 0.05);
+            border: 1px solid rgba(239, 68, 68, 0.2);
+            border-radius: 12px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+
+        .danger-zone h3 {
+            color: #ef4444;
+            margin-bottom: 10px;
+        }
+
+        .danger-zone p {
+            color: #6b7280;
+            margin-bottom: 15px;
+        }
+
+        .danger-btn {
+            background: #ef4444;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .danger-btn:hover {
+            background: #dc2626;
+            transform: translateY(-1px);
+        }
+
+        /* Hide scrollbar for webkit browsers */
+        .content-area::-webkit-scrollbar {
+            display: none;
+        }
+
+        .content-area {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+
+        /* File List Styles */
+        #file-list-container {
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .file-list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+        
+        .storage-stats {
+            color: #6b7280;
+            font-size: 14px;
+        }
+        
+        #file-list {
+            max-height: 300px;
+            overflow-y: auto;
+            border: 1px solid rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            padding: 10px;
+        }
+        
+        .file-item {
+            display: flex;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+        
+        .file-item:last-child {
+            border-bottom: none;
+        }
+        
+        .file-name {
+            flex: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        
+        .file-size {
+            width: 80px;
+            text-align: right;
+            color: #6b7280;
+            font-size: 13px;
+            margin: 0 15px;
+        }
+        
+        .file-actions button {
+            background: none;
+            border: none;
+            color: #667eea;
+            cursor: pointer;
+            font-size: 13px;
+            margin-left: 10px;
+        }
+        
+        .file-actions button:hover {
+            text-decoration: underline;
+        }
+        
+        .file-actions button.delete {
+            color: #ef4444;
+        }
+        
+        .upload-progress {
+            color: #6b7280;
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .upload-success {
+            color: #10b981;
+            padding: 10px;
+            font-size: 14px;
+        }
+        
+        .upload-error {
+            color: #ef4444;
+            padding: 10px;
+            font-size: 14px;
+        }
+		
+		/* Notes Section Styles */
+		.notes-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+			gap: 20px;
+			margin-top: 20px;
+		}
+
+		.note-card {
+			background: rgba(255, 255, 255, 0.9);
+			border-radius: 12px;
+			padding: 20px;
+			border: 1px solid rgba(0, 0, 0, 0.1);
+			transition: all 0.2s ease;
+			cursor: pointer;
+			position: relative;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		}
+
+		.note-card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+			border-color: #667eea;
+		}
+
+		.note-title {
+			font-size: 16px;
+			font-weight: 600;
+			color: #374151;
+			margin-bottom: 8px;
+			line-height: 1.4;
+			max-height: 3em;
+			overflow: hidden;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+		}
+
+		.note-content {
+			color: #6b7280;
+			font-size: 14px;
+			line-height: 1.5;
+			max-height: 4.5em;
+			overflow: hidden;
+			display: -webkit-box;
+			-webkit-line-clamp: 3;
+			-webkit-box-orient: vertical;
+		}
+
+		.note-meta {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-top: 12px;
+			padding-top: 12px;
+			border-top: 1px solid rgba(0, 0, 0, 0.05);
+			font-size: 12px;
+			color: #9ca3af;
+		}
+
+		.note-actions {
+			display: flex;
+			gap: 8px;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+		}
+
+		.note-card:hover .note-actions {
+			opacity: 1;
+		}
+
+		.note-action-btn {
+			background: none;
+			border: none;
+			color: #6b7280;
+			cursor: pointer;
+			padding: 4px;
+			border-radius: 4px;
+			transition: all 0.2s ease;
+			font-size: 14px;
+		}
+
+		.note-action-btn:hover {
+			background: rgba(0, 0, 0, 0.05);
+			color: #374151;
+		}
+
+		.note-action-btn.delete:hover {
+			background: rgba(239, 68, 68, 0.1);
+			color: #ef4444;
+		}
+
+		/* Notes Section Styles */
+		.notes-populated {
+			display: none; /* Initially hidden */
+		}
+
+		.notes-header {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+			gap: 16px;
+		}
+
+		.notes-search {
+			flex: 1;
+			max-width: 300px;
+			padding: 10px 16px;
+			border: 1px solid #d1d5db;
+			border-radius: 8px;
+			font-size: 14px;
+			background: rgba(255, 255, 255, 0.9);
+		}
+
+		.notes-search:focus {
+			outline: none;
+			border-color: #667eea;
+			box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+		}
+
+		.create-note-btn {
+			background: linear-gradient(135deg, #667eea, #764ba2);
+			color: white;
+			border: none;
+			padding: 12px 20px;
+			border-radius: 8px;
+			cursor: pointer;
+			font-weight: 500;
+			transition: all 0.2s ease;
+			display: flex;
+			align-items: center;
+			gap: 8px;
+		}
+
+		.create-note-btn:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 8px 25px rgba(102, 126, 234, 0.4);
+		}
+
+		.notes-stats {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-bottom: 20px;
+			font-size: 14px;
+			color: #6b7280;
+		}
+
+		.notes-grid {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+			gap: 20px;
+		}
+
+		.note-card {
+			background: rgba(255, 255, 255, 0.9);
+			border-radius: 12px;
+			padding: 20px;
+			border: 1px solid rgba(0, 0, 0, 0.1);
+			transition: all 0.2s ease;
+			cursor: pointer;
+			position: relative;
+			box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+		}
+
+		.note-card:hover {
+			transform: translateY(-2px);
+			box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+			border-color: #667eea;
+		}
+
+		.note-title {
+			font-size: 16px;
+			font-weight: 600;
+			color: #374151;
+			margin-bottom: 8px;
+			line-height: 1.4;
+			max-height: 3em;
+			overflow: hidden;
+			display: -webkit-box;
+			-webkit-line-clamp: 2;
+			-webkit-box-orient: vertical;
+		}
+
+		.note-content {
+			color: #6b7280;
+			font-size: 14px;
+			line-height: 1.5;
+			max-height: 4.5em;
+			overflow: hidden;
+			display: -webkit-box;
+			-webkit-line-clamp: 3;
+			-webkit-box-orient: vertical;
+		}
+
+		.note-meta {
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			margin-top: 12px;
+			padding-top: 12px;
+			border-top: 1px solid rgba(0, 0, 0, 0.05);
+			font-size: 12px;
+			color: #9ca3af;
+		}
+
+		.note-actions {
+			display: flex;
+			gap: 8px;
+			opacity: 0;
+			transition: opacity 0.2s ease;
+		}
+
+		.note-card:hover .note-actions {
+			opacity: 1;
+		}
+
+		.note-action-btn {
+			background: none;
+			border: none;
+			color: #6b7280;
+			cursor: pointer;
+			padding: 4px;
+			border-radius: 4px;
+			transition: all 0.2s ease;
+			font-size: 14px;
+		}
+
+		.note-action-btn:hover {
+			background: rgba(0, 0, 0, 0.05);
+			color: #374151;
+		}
+
+		.note-action-btn.delete:hover {
+			background: rgba(239, 68, 68, 0.1);
+			color: #ef4444;
+		}
+
+		/* Note Editor Modal */
+		.note-modal {
+			position: fixed;
+			top: 0;
+			left: 0;
+			right: 0;
+			bottom: 0;
+			background: rgba(0, 0, 0, 0.5);
+			backdrop-filter: blur(5px);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			z-index: 1000;
+			opacity: 0;
+			visibility: hidden;
+			transition: all 0.3s ease;
+		}
+
+		.note-modal.open {
+			opacity: 1;
+			visibility: visible;
+		}
+
+		.note-editor {
+			background: white;
+			border-radius: 16px;
+			width: 90%;
+			max-width: 700px;
+			max-height: 80vh;
+			overflow: hidden;
+			box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+			transform: scale(0.9);
+			transition: transform 0.3s ease;
+		}
+
+		.note-modal.open .note-editor {
+			transform: scale(1);
+		}
+
+		.note-editor-header {
+			padding: 20px 24px;
+			border-bottom: 1px solid rgba(0, 0, 0, 0.1);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background: rgba(102, 126, 234, 0.05);
+		}
+
+		.note-editor-title {
+			font-size: 18px;
+			font-weight: 600;
+			color: #374151;
+		}
+
+		.note-editor-close {
+			background: none;
+			border: none;
+			font-size: 24px;
+			color: #6b7280;
+			cursor: pointer;
+			padding: 0;
+			width: 32px;
+			height: 32px;
+			border-radius: 50%;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			transition: all 0.2s ease;
+		}
+
+		.note-editor-close:hover {
+			background: rgba(0, 0, 0, 0.1);
+			color: #374151;
+		}
+
+		.note-editor-body {
+			padding: 24px;
+			display: flex;
+			flex-direction: column;
+			gap: 16px;
+			max-height: 60vh;
+			overflow-y: auto;
+		}
+
+		.note-input-group {
+			display: flex;
+			flex-direction: column;
+			gap: 8px;
+		}
+
+		.note-input-label {
+			font-weight: 500;
+			color: #374151;
+			font-size: 14px;
+		}
+
+		.note-title-input {
+			padding: 12px 16px;
+			border: 1px solid #d1d5db;
+			border-radius: 8px;
+			font-size: 16px;
+			font-weight: 600;
+			transition: border-color 0.2s ease;
+			background: rgba(255, 255, 255, 0.9);
+		}
+
+		.note-title-input:focus {
+			outline: none;
+			border-color: #667eea;
+			box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+		}
+
+		.note-content-input {
+			padding: 16px;
+			border: 1px solid #d1d5db;
+			border-radius: 8px;
+			font-size: 14px;
+			line-height: 1.6;
+			resize: vertical;
+			min-height: 200px;
+			font-family: inherit;
+			transition: border-color 0.2s ease;
+			background: rgba(255, 255, 255, 0.9);
+		}
+
+		.note-content-input:focus {
+			outline: none;
+			border-color: #667eea;
+			box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+		}
+
+		.note-editor-footer {
+			padding: 16px 24px;
+			border-top: 1px solid rgba(0, 0, 0, 0.1);
+			display: flex;
+			justify-content: space-between;
+			align-items: center;
+			background: rgba(0, 0, 0, 0.02);
+		}
+
+		.note-meta-info {
+			font-size: 12px;
+			color: #9ca3af;
+		}
+
+		.note-editor-actions {
+			display: flex;
+			gap: 12px;
+		}
+
+		.note-btn {
+			padding: 10px 20px;
+			border: none;
+			border-radius: 8px;
+			font-weight: 500;
+			cursor: pointer;
+			transition: all 0.2s ease;
+			font-size: 14px;
+		}
+
+		.note-btn-secondary {
+			background: rgba(0, 0, 0, 0.05);
+			color: #6b7280;
+		}
+
+		.note-btn-secondary:hover {
+			background: rgba(0, 0, 0, 0.1);
+			color: #374151;
+		}
+
+		.note-btn-primary {
+			background: linear-gradient(135deg, #667eea, #764ba2);
+			color: white;
+		}
+
+		.note-btn-primary:hover {
+			transform: translateY(-1px);
+			box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+		}
+
+		.note-btn-danger {
+			background: #ef4444;
+			color: white;
+		}
+
+		.note-btn-danger:hover {
+			background: #dc2626;
+			transform: translateY(-1px);
+		}
+    </style>
+	<script>
+	// ===== CONFIGURATION =====
+const CONFIG = {
+    REGION: "ap-southeast-1",
+    //USER_POOL_ID: "ap-southeast-1_2GP2VeU1m",
+    //CLIENT_ID: "14ogj9aammkrug4l8fk4s48pg7",
+	//CLIENT_SECRET:"1hi66vskgnpl5nprsocmbg8ueq3o0ilo038cehmrllbktfn80mbm",
+    //IDENTITY_POOL_ID: "ap-southeast-1:5f8b5e35-654b-4902-8e76-00d179af197b",
+    //REDIRECT_URI: "https://dev.d1mxo3duy7tqjb.amplifyapp.com/",
+    //COGNITO_DOMAIN: "ap-southeast-12gp2veu1m.auth.ap-southeast-1.amazoncognito.com",
+    API_BASE_URL: "https://wnsje5z466.execute-api.ap-southeast-1.amazonaws.com/testing3"
+};
+
+// ===== GLOBAL STATE =====
+let currentUser = {
+    family_name: 'Test',
+    given_name: 'User',     
+    email: 'test@example.com',        
+    avatar: 'T',    
+    userId: 'demo-user-id',           
+    jwtToken: ''          
+};
+
+<!-- function redirectToLogin() { -->
+    <!-- // Updated login URL with proper parameters -->
+    <!-- const loginUrl =  -->
+	    <!-- `${CONFIG.COGNITO_DOMAIN}` + -->
+        <!-- `?client_id=${CONFIG.OAUTH_CLIENT_ID}` + -->
+        <!-- `&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}` + -->
+        <!-- `&response_type=code` + -->
+        <!-- `&scope=email+openid+phone`; -->
+
+
+    <!-- console.log('Redirecting to:', loginUrl); -->
+    <!-- window.location.href = loginUrl; -->
+<!-- } -->
+
+// ===== COGNITO SETUP =====
+<!-- AWS.config.region = CONFIG.REGION; -->
+
+// Initialize Cognito User Pool
+<!-- const userPool = new AmazonCognitoIdentity.CognitoUserPool({ -->
+    <!-- UserPoolId: CONFIG.USER_POOL_ID, -->
+    <!-- ClientId: CONFIG.CLIENT_ID -->
+<!-- }); -->
+
+<!-- async function loadUserAttributes(cognitoUser) { -->
+    <!-- return new Promise((resolve, reject) => { -->
+        <!-- cognitoUser.getUserAttributes((err, attributes) => { -->
+            <!-- if (err) { -->
+                <!-- reject(err); -->
+                <!-- return; -->
+            <!-- } -->
+            
+            <!-- const userAttrs = {}; -->
+            <!-- attributes.forEach(attr => { -->
+                <!-- userAttrs[attr.getName()] = attr.getValue(); -->
+            <!-- }); -->
+            
+            <!-- currentUser = { -->
+                <!-- name: userAttrs.family_name || userAttrs.given_name || userAttrs.email.split('@')[0], -->
+                <!-- email: userAttrs.email, -->
+                <!-- avatar: (userAttrs.family_name?.[0] || userAttrs.given_name?.[0] || 'U').toUpperCase(), -->
+                <!-- userId: userAttrs.sub, -->
+                <!-- jwtToken: cognitoUser.getSignInUserSession().getIdToken().getJwtToken() -->
+            <!-- }; -->
+            
+            <!-- updateUserDisplay(); -->
+            <!-- resolve(currentUser); -->
+        <!-- }); -->
+    <!-- }); -->
+<!-- } -->
+
+<!-- function checkAuthAndRedirect() { -->
+    <!-- const cognitoUser = userPool.getCurrentUser(); -->
+    
+    <!-- if (cognitoUser) { -->
+        <!-- cognitoUser.getSession(async (err, session) => { -->
+            <!-- if (err || !session.isValid()) { -->
+                <!-- // Redirect to login -->
+                <!-- redirectToLogin(); -->
+            <!-- } else { -->
+                <!-- try { -->
+                    <!-- await loadUserAttributes(cognitoUser); -->
+                    <!-- initUI(); -->
+                    <!-- loadUserFiles(); -->
+                <!-- } catch (error) { -->
+                    <!-- console.error("Error loading user:", error); -->
+                    <!-- redirectToLogin(); -->
+                <!-- } -->
+            <!-- } -->
+        <!-- }); -->
+    <!-- } else { -->
+        <!-- redirectToLogin(); -->
+    <!-- } -->
+<!-- } -->
+
+<!-- function redirectToLogin() { -->
+    <!-- const loginUrl = `https://${CONFIG.COGNITO_DOMAIN}/login?client_id=${CONFIG.CLIENT_ID}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}`; -->
+    <!-- window.location.href = loginUrl; -->
+<!-- } -->
+
+// Handle OAuth callback
+<!-- async function handleOAuthCallback() { -->
+    <!-- const urlParams = new URLSearchParams(window.location.search); -->
+    <!-- const code = urlParams.get('code'); -->
+
+    <!-- if (!code) return; -->
+
+    <!-- const redirectUri = window.location.origin + window.location.pathname; -->
+
+    <!-- try { -->
+        <!-- const response = await fetch(`https://${CONFIG.COGNITO_DOMAIN}/oauth2/token`, { -->
+            <!-- method: 'POST', -->
+            <!-- headers: { -->
+                <!-- 'Content-Type': 'application/x-www-form-urlencoded', -->
+                <!-- 'Authorization': 'Basic ' + btoa(`${CONFIG.CLIENT_ID}:${CONFIG.CLIENT_SECRET}`) -->
+            <!-- }, -->
+            <!-- body: new URLSearchParams({ -->
+                <!-- grant_type: 'authorization_code', -->
+                <!-- client_id: CONFIG.CLIENT_ID, -->
+                <!-- code: code, -->
+                <!-- redirect_uri: redirectUri -->
+            <!-- }) -->
+        <!-- }); -->
+
+        <!-- const data = await response.json(); -->
+        <!-- console.log(data); -->
+
+        <!-- if (data.id_token) { -->
+            <!-- const payload = JSON.parse(atob(data.id_token.split('.')[1])); -->
+
+            <!-- currentUser = { -->
+                <!-- name: `${payload.given_name || ''} ${payload.family_name || ''}`.trim() || payload.name || payload.email.split('@')[0], -->
+                <!-- email: payload.email, -->
+                <!-- avatar: ((payload.given_name?.[0] || payload.name?.[0] || payload.email?.[0]) || 'U').toUpperCase(), -->
+                <!-- userId: payload.sub, -->
+                <!-- jwtToken: data.id_token -->
+            <!-- }; -->
+
+            <!-- AWS.config.region = CONFIG.REGION; -->
+
+            <!-- AWS.config.credentials = new AWS.CognitoIdentityCredentials({ -->
+                <!-- IdentityPoolId: CONFIG.IDENTITY_POOL_ID, -->
+                <!-- Logins: { -->
+                    <!-- [`cognito-idp.${CONFIG.REGION}.amazonaws.com/${CONFIG.USER_POOL_ID}`]: currentUser.jwtToken -->
+                <!-- } -->
+            <!-- }); -->
+
+            <!-- AWS.config.credentials.clearCachedId(); -->
+
+            <!-- AWS.config.credentials.get(function(err) { -->
+                <!-- if (err) { -->
+                    <!-- console.error("❌ Error getting identity:", err); -->
+                    <!-- alert("Login failed. Cannot fetch AWS identity."); -->
+                <!-- } else { -->
+                    <!-- console.log("✅ Identity ID acquired:", AWS.config.credentials.identityId); -->
+                    <!-- currentUser.identityId = AWS.config.credentials.identityId;  -->
+                    <!-- updateUserDisplay(); -->
+                    <!-- initUI?.(); -->
+                    <!-- loadUserFiles?.(); -->
+                <!-- } -->
+
+                <!-- history.replaceState({}, document.title, redirectUri); -->
+            <!-- }); -->
+
+        <!-- } else { -->
+            <!-- alert('Login failed: no token.'); -->
+        <!-- } -->
+    <!-- } catch (err) { -->
+        <!-- console.error('OAuth callback failed:', err); -->
+    <!-- } -->
+<!-- } -->
+
+
+
+// ===== FILE OPERATIONS (API CALLS) =====
+async function handleFileUpload(event) {
+  const files = event.target.files;
+
+  for (const file of files) {
+    const reader = new FileReader();
+
+    reader.onloadend = async () => {
+      const fileBase64 = reader.result.split(',')[1]; // remove "data:*/*;base64,"
+
+      try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/files`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${currentUser.jwtToken}`,
+          },
+          body: JSON.stringify({
+            fileName: file.name,
+            fileType: file.type,
+            fileData: fileBase64
+          }),
+        });
+
+        const result = await response.json();
+        console.log("Upload response:", result);
+
+        if (response.ok) {
+          alert("Upload successful!");
+        } else {
+          alert("Upload failed!");
+        }
+
+      } catch (err) {
+        console.error("Error uploading file:", err);
+        alert("Upload failed!");
+      }
+    };
+
+    reader.readAsDataURL(file);
+  }
+}
+
+async function loadUserFiles() {
+  try {
+    // Step 1: Prepare signed request
+    const endpoint = `${CONFIG.API_BASE_URL}/files`;
+    const request = new AWS.HttpRequest(endpoint, CONFIG.REGION);
+
+    request.method = 'GET';
+    request.headers['host'] = new URL(endpoint).host;
+    request.headers['Content-Type'] = 'application/json';
+    request.headers['X-Amz-Date'] = new Date().toISOString();
+
+    const signer = new AWS.Signers.V4(request, 'execute-api');
+    signer.addAuthorization(AWS.config.credentials, new Date());
+
+    // Step 2: Send using fetch
+    const response = await fetch(endpoint, {
+      method: request.method,
+      headers: request.headers
+    });
+
+    const result = await response.json();
+    console.log("✅ Received files:", result);
+
+    if (result.files) {
+      displayFiles(result.files);
+      updateUsageStats(result.files);
+    }
+  } catch (err) {
+    console.error("❌ Error loading files:", err);
+    alert("Error loading files. Check console for details.");
+  }
+}
+
+
+function displayFiles(files) {
+    const emptyState = document.getElementById('empty-storage-state');
+    const fileListContainer = document.getElementById('file-list-container');
+    const fileList = document.getElementById('file-list');
+    
+    if (files.length === 0) {
+        emptyState.style.display = 'block';
+        fileListContainer.style.display = 'none';
+    } else {
+        emptyState.style.display = 'none';
+        fileListContainer.style.display = 'block';
+        
+        fileList.innerHTML = files.map(file => `
+            <div class="file-item">
+                <span class="file-name">📄 ${file.fileName}</span>
+                <span class="file-type">🧾 ${file.fileType}</span>
+                <span class="file-size">📏 ${formatFileSize(file.fileSize)}</span>
+                <div class="file-actions">
+                    <button onclick="downloadFile('${file.fileId}')">Download</button>
+                    <button class="delete" onclick="deleteFile('${file.fileId}')">Delete</button>
+                </div>
+            </div>
+        `).join('');
+    }
+}
+
+function formatFileSize(bytes) {
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+async function downloadFile(fileId) {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/files/${fileId}?userId=${currentUser.userId}`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+				'Authorization': `Bearer ${currentUser.jwtToken}`
+            }
+        });
+
+        const result = await response.json();
+        
+        if (result.downloadUrl) {
+            window.open(result.downloadUrl, '_blank');
+        } else {
+            alert('Download failed: ' + result.error);
+        }
+    } catch (err) {
+        console.error("Download error:", err);
+        alert("Download failed. Check console for details.");
+    }
+}
+
+async function deleteFile(fileId) {
+    if (!confirm('Delete this file permanently?')) return;
+    
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/files/${fileId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+				'Authorization': `Bearer ${currentUser.jwtToken}`
+            },
+            body: JSON.stringify({
+                userId: currentUser.userId
+            })
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            alert('File deleted successfully');
+            loadUserFiles(); // Refresh file list
+        } else {
+            alert('Delete failed: ' + result.error);
+        }
+    } catch (err) {
+        console.error("Delete error:", err);
+        alert("Delete failed. Check console for details.");
+    }
+}
+
+// ===== UTILITY FUNCTIONS =====
+function formatFileSize(bytes) {
+    if (bytes === 0) return '0 Bytes';
+    const k = 1024;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+function updateUsageStats(files) {
+    const totalFiles = files.length;
+    const totalSize = files.reduce((sum, file) => sum + file.fileSize, 0);
+    const totalSizeGB = totalSize / (1024 * 1024 * 1024);
+    
+    document.getElementById('files-count').textContent = `${totalFiles} / 1,000`;
+    document.getElementById('storage-count').textContent = `${totalSizeGB.toFixed(2)} GB / 50 GB`;
+    document.getElementById('storage-stats-text').textContent = `${totalFiles} files (${formatFileSize(totalSize)} used)`;
+    
+    // Update progress bars
+    document.getElementById('files-progress').value = (totalFiles / 1000) * 100;
+    document.getElementById('storage-progress').value = (totalSizeGB / 50) * 100;
+}
+
+// ===== UI FUNCTIONS =====
+function initUI() {
+    // Initialize tabs
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', function(e) {
+            e.preventDefault();
+            
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            // Add active class to clicked tab
+            this.classList.add('active');
+            
+            // Show corresponding content
+            const targetId = this.getAttribute('data-tab');
+            const targetContent = document.getElementById(targetId);
+            if (targetContent) {
+                targetContent.classList.add('active');
+            }
+        });
+    });
+
+    // Initialize dropdown
+    const profile = document.getElementById('user-profile');
+    const dropdown = document.getElementById('dropdown-menu');
+    
+    if (profile && dropdown) {
+        profile.addEventListener('click', function(e) {
+            e.stopPropagation();
+            this.classList.toggle('open');
+            dropdown.classList.toggle('open');
+        });
+
+        document.addEventListener('click', function(e) {
+            if (dropdown.classList.contains('open') && !profile.contains(e.target)) {
+                dropdown.classList.remove('open');
+                profile.classList.remove('open');
+            }
+        });
+    }
+}
+
+function updateUserDisplay() {
+    const nameEl = document.getElementById('user-name');
+    const emailEl = document.getElementById('user-email');
+    const avatarEl = document.getElementById('user-avatar');
+    
+    if (nameEl) nameEl.textContent = currentUser.name;
+    if (emailEl) emailEl.textContent = currentUser.email;
+    if (avatarEl) avatarEl.textContent = currentUser.avatar;
+}
+
+// ===== EVENT LISTENERS =====
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize UI
+    initUI();
+    
+    // Setup file input
+    const fileInput = document.getElementById('fileInput');
+    if (fileInput) {
+        fileInput.addEventListener('change', handleFileUpload);
+    }
+    
+    // Check for OAuth callback or existing session
+    <!-- if (window.location.search.includes('code=')) { -->
+        <!-- handleOAuthCallback(); -->
+    <!-- } else { -->
+        <!-- if (currentUser.jwtToken) { -->
+            <!-- initUI(); -->
+            <!-- loadUserFiles(); -->
+        <!-- } else { -->
+            <!-- redirectToLogin(); -->
+        <!-- } -->
+    <!-- } -->
+	
+	// Initialize notes functionality
+    initializeNotes();
+	
+	// Close modal when clicking outside
+    const noteModal = document.getElementById('noteModal');
+    if (noteModal) {
+        noteModal.addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeNoteEditor();
+            }
+        });
+    }
+    
+    // Update word count as user types
+    const contentInput = document.getElementById('noteContentInput');
+    if (contentInput) {
+        contentInput.addEventListener('input', updateWordCount);
+    }
+    
+    // Close modal with Escape key
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape' && document.getElementById('noteModal').classList.contains('open')) {
+            closeNoteEditor();
+        }
+    });
+    
+    // If user is already logged in, load notes
+    if (currentUser.jwtToken) {
+        // Small delay to ensure UI is ready
+        setTimeout(() => {
+            loadNotes();
+        }, 1000);
+    }
+ });
+
+// ===== GLOBAL FUNCTIONS =====
+<!-- window.signOut = function() { -->
+<!-- const cognitoUser = userPool.getCurrentUser(); -->
+    <!-- if (cognitoUser) { -->
+        <!-- cognitoUser.signOut(); -->
+    <!-- } -->
+    
+    <!-- // Clear current user -->
+    <!-- currentUser = { name: '', email: '', avatar: '', userId: '', jwtToken: '' }; -->
+    
+    <!-- // Redirect to Cognito logout -->
+    <!-- const logoutUrl = `https://${CONFIG.COGNITO_DOMAIN}/login?client_id=${CONFIG.CLIENT_ID}&response_type=code&scope=email+openid+phone&redirect_uri=${encodeURIComponent(CONFIG.REDIRECT_URI)}`; -->
+    <!-- window.location.href = logoutUrl; -->
+<!-- }; -->
+
+window.downloadFile = downloadFile;
+window.deleteFile = deleteFile;
+
+
+// Notes Management System
+let currentNotes = [];
+let currentEditingNote = null;
+
+async function loadNotes() {
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/notes`, {
+            method: 'GET',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.jwtToken}`
+            }
+        });
+
+        const result = await response.json();
+        console.log('Notes response:', result);
+        
+        
+        if (result.success && result.notes) {
+            currentNotes = result.notes;
+            displayNotes();
+            updateNotesStats();
+        } else {
+            console.error('Failed to load notes:', result.error);
+            currentNotes = [];
+            displayNotes();
+            updateNotesStats();
+        }
+    } catch (err) {
+        console.error("Error loading notes:", err);
+        // Fallback to localStorage for offline functionality
+        const saved = localStorage.getItem('cloudsafe_notes');
+        currentNotes = saved ? JSON.parse(saved) : [];
+        displayNotes();
+        updateNotesStats();
+    }
+}
+
+
+async function saveNote() {
+    const titleInput = document.getElementById('noteTitleInput');
+    const contentInput = document.getElementById('noteContentInput');
+    
+    const title = titleInput.value.trim();
+    const content = contentInput.value.trim();
+    
+    if (!title) {
+        alert('Please enter a title for your note');
+        titleInput.focus();
+        return;
+    }
+    
+    if (!content) {
+        alert('Please enter some content for your note');
+        contentInput.focus();
+        return;
+    }
+    
+    try {
+        let response;
+        
+        if (currentEditingNote) {
+            // Update existing note
+            response = await fetch(`${CONFIG.API_BASE_URL}/notes/${currentEditingNote.noteId}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.jwtToken}`
+                },
+                body: JSON.stringify({
+                    title: title,
+                    content: content,
+                })
+            });
+        } else {
+            // Create new note
+            response = await fetch(`${CONFIG.API_BASE_URL}/notes`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.jwtToken}`
+                },
+                body: JSON.stringify({
+                    title: title,
+                    content: content
+                })
+            });
+        }
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload notes from server
+            await loadNotes();
+            closeNoteEditor();
+            alert(currentEditingNote ? 'Note updated successfully!' : 'Note created successfully!');
+        } else {
+            alert('Error saving note: ' + result.error);
+        }
+        
+    } catch (error) {
+        console.error('Error saving note:', error);
+        alert('Failed to save note. Please try again.');
+    }
+}
+
+// to close or x the note opened
+function closeNoteEditor() {
+    const modal = document.getElementById('noteModal');
+    if (modal) {
+        modal.classList.remove('open');
+    }
+    currentEditingNote = null;
+}
+
+async function deleteNote(noteId) {
+    if (!confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+        return;
+    }
+    
+    try {
+        const response = await fetch(`${CONFIG.API_BASE_URL}/notes/${noteId}`, {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${currentUser.jwtToken}`
+            }
+        });
+
+        const result = await response.json();
+        
+        if (result.success) {
+            // Reload notes from server
+            await loadNotes();
+            alert('Note deleted successfully');
+        } else {
+            alert('Error deleting note: ' + result.error);
+        }
+        
+    } catch (error) {
+        console.error('Error deleting note:', error);
+        alert('Failed to delete note. Please try again.');
+    }
+}
+
+// Replace your existing deleteCurrentNote function with this API version
+async function deleteCurrentNote() {
+    if (!currentEditingNote) return;
+    
+    if (confirm('Are you sure you want to delete this note? This action cannot be undone.')) {
+        try {
+            const response = await fetch(`${CONFIG.API_BASE_URL}/notes/${currentEditingNote.noteId}`, {
+                method: 'DELETE',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${currentUser.jwtToken}`
+                }
+            });
+
+            const result = await response.json();
+            
+            if (result.success) {
+                await loadNotes();
+                closeNoteEditor();
+                alert('Note deleted successfully');
+            } else {
+                alert('Error deleting note: ' + result.error);
+            }
+            
+        } catch (error) {
+            console.error('Error deleting note:', error);
+            alert('Failed to delete note. Please try again.');
+        }
+    }
+}
+
+// Update the openNoteEditor function to work with API data
+function openNoteEditor(noteId = null) {
+    const modal = document.getElementById('noteModal');
+    const title = document.getElementById('noteEditorTitle');
+    const titleInput = document.getElementById('noteTitleInput');
+    const contentInput = document.getElementById('noteContentInput');
+    const deleteBtn = document.getElementById('deleteNoteBtn');
+    
+    if (noteId) {
+        // Edit existing note - find by noteId (not id)
+        const note = currentNotes.find(n => n.noteId === noteId || n.id === noteId);
+        if (note) {
+            currentEditingNote = note;
+            title.textContent = 'Edit Note';
+            titleInput.value = note.title;
+            contentInput.value = note.content;
+            deleteBtn.style.display = 'block';
+        }
+    } else {
+        // Create new note
+        currentEditingNote = null;
+        title.textContent = 'New Note';
+        titleInput.value = '';
+        contentInput.value = '';
+        deleteBtn.style.display = 'none';
+    }
+    
+    modal.classList.add('open');
+    titleInput.focus();
+    updateWordCount();
+}
+
+// Update the createNoteCard function to use noteId
+function createNoteCard(note) {
+    const createdDate = new Date(note.createdAt).toLocaleDateString();
+    const updatedDate = note.updatedAt ? new Date(note.updatedAt).toLocaleDateString() : createdDate;
+    const isUpdated = note.updatedAt && note.updatedAt !== note.createdAt;
+    
+    // Use noteId if available, fallback to id for backward compatibility
+    const noteId = note.noteId || note.id;
+    
+    return `
+        <div class="note-card" onclick="openNoteEditor('${noteId}')">
+            <div class="note-title">${escapeHtml(note.title)}</div>
+            <div class="note-content">${escapeHtml(note.content)}</div>
+            <div class="note-meta">
+                <span>${isUpdated ? `Updated ${updatedDate}` : `Created ${createdDate}`}</span>
+                <div class="note-actions" onclick="event.stopPropagation()">
+                    <button class="note-action-btn" onclick="openNoteEditor('${noteId}')" title="Edit">✏️</button>
+                    <button class="note-action-btn delete" onclick="deleteNote('${noteId}')" title="Delete">🗑️</button>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Update the createNote function to open the editor
+function createNote() {
+    openNoteEditor();
+}
+
+// Initialize notes when user logs in - add this to your existing initialization
+function initializeNotes() {
+    // Load notes when the notes tab is first clicked
+    const notesTab = document.querySelector('[data-tab="notes"]');
+    if (notesTab) {
+        notesTab.addEventListener('click', function() {
+            // Only load notes if we haven't loaded them yet or if it's been a while
+            if (currentNotes.length === 0) {
+                loadNotes();
+            }
+        });
+    }
+    
+    // Load notes immediately if we're already on notes tab
+    const notesContent = document.getElementById('notes');
+    if (notesContent && notesContent.classList.contains('active')) {
+        loadNotes();
+    }
+}
+
+// Sync notes with localStorage as backup (optional)
+function syncNotesToLocalStorage() {
+    if (currentNotes.length > 0) {
+        localStorage.setItem('cloudsafe_notes_backup', JSON.stringify(currentNotes));
+    }
+}
+
+// Call this after successful API operations
+function afterNoteOperation() {
+    syncNotesToLocalStorage();
+    updateNotesStats();
+}
+
+</script>
+</head>
+<body>
+    <!-- Main Dashboard -->
+    <div id="dashboard-page" class="dashboard">
+        <aside class="sidebar">
+            <header class="logo">
+                <svg width="100%" height="60" viewBox="0 0 900 900" xmlns="http://www.w3.org/2000/svg" style="fill: #4a5568;">
+                    <g transform="translate(0.000000,900.000000) scale(0.100000,-0.100000)">
+                        <path d="M4455 8516 c-22 -7 -66 -25 -99 -40 -32 -14 -62 -26 -67 -26 -5 0
+-52 -20 -105 -45 -52 -25 -99 -45 -103 -45 -4 0 -101 -40 -216 -90 -115 -49
+-213 -90 -217 -90 -4 0 -51 -20 -104 -45 -52 -25 -98 -45 -102 -45 -4 0 -104
+-41 -222 -91 -118 -50 -237 -100 -265 -111 -81 -33 -149 -82 -188 -136 -72
+-97 -67 23 -67 -1597 l0 -1462 22 -20 c13 -12 64 -37 113 -58 50 -20 102 -43
+117 -51 33 -18 53 -18 86 0 53 28 175 76 192 76 16 0 55 -16 210 -82 25 -11
+54 -23 65 -28 43 -18 532 -223 560 -235 17 -8 56 -24 88 -36 32 -13 63 -29 69
+-36 6 -8 10 -44 9 -82 -2 -86 10 -113 62 -136 23 -9 60 -25 82 -35 149 -65
+152 -66 220 -35 83 36 123 53 152 64 60 24 72 47 75 145 l3 89 135 57 c74 32
+149 63 165 70 17 6 44 17 60 25 17 7 145 61 285 120 140 59 269 114 287 121
+17 8 38 14 46 14 15 0 140 -50 189 -76 34 -18 73 -18 106 1 28 15 92 43 152
+65 19 7 45 22 58 33 l22 21 -2 1490 -3 1491 -28 47 c-43 73 -90 113 -182 157
+-46 23 -88 41 -94 41 -5 0 -53 20 -105 45 -53 25 -100 45 -105 45 -7 0 -46 16
+-156 65 -94 42 -270 115 -277 115 -5 0 -39 14 -76 31 -83 39 -93 43 -277 120
+-82 34 -178 75 -213 90 -34 16 -67 29 -73 29 -5 0 -36 13 -68 29 -50 24 -144
+53 -169 50 -4 0 -25 -6 -47 -13z m-1355 -1203 c47 -19 103 -43 125 -53 89 -41
+158 -70 166 -70 4 0 46 -18 93 -40 47 -22 88 -40 91 -40 7 0 225 -90 290 -120
+91 -42 158 -70 166 -70 5 0 37 -13 72 -29 34 -16 88 -40 120 -52 67 -27 126
+-73 159 -127 l23 -37 3 -1035 c2 -569 0 -1054 -3 -1077 -7 -49 -27 -73 -58
+-73 -17 0 -225 83 -414 166 -59 26 -96 41 -248 104 -82 35 -173 73 -201 86
+-27 12 -75 32 -105 44 -30 11 -67 27 -84 35 -16 7 -80 34 -141 60 -124 52
+-180 86 -195 118 -6 12 -17 34 -25 49 -22 41 -20 92 4 123 21 26 22 38 22 236
+0 203 -1 209 -25 255 l-25 47 0 427 0 427 25 47 c24 46 25 53 25 252 0 184 -2
+209 -18 232 -29 42 -33 61 -22 102 11 40 42 62 75 53 11 -3 58 -21 105 -40z"/>
+                        <path d="M3314 6422 c-52 -29 -69 -45 -104 -100 -19 -30 -50 -62 -71 -74 -92
+-52 -130 -177 -94 -313 34 -132 134 -218 233 -201 28 4 46 0 81 -21 61 -35
+160 -38 213 -5 49 30 92 81 119 139 19 41 23 66 23 168 1 142 -17 203 -89 300
+-61 82 -137 125 -220 124 -37 0 -72 -6 -91 -17z m-38 -257 c72 -42 110 -156
+84 -250 -15 -54 -70 -105 -112 -105 -41 0 -96 37 -123 84 -57 97 -49 203 21
+264 45 39 73 40 130 7z"/>
+                        <path d="M3990 6223 c-17 -21 -33 -55 -37 -76 -3 -23 -21 -56 -45 -85 -85
+-101 -98 -156 -98 -408 0 -196 8 -242 48 -263 26 -14 77 -14 103 -1 43 24 49
+57 49 274 0 112 3 211 6 220 5 12 21 16 68 16 97 1 138 47 138 158 0 121 -63
+202 -155 202 -40 0 -49 -4 -77 -37z"/>
+                        <path d="M7430 3594 c-65 -20 -138 -80 -168 -137 -22 -44 -30 -84 -41 -219 -1
+-5 -32 -8 -69 -8 -40 0 -73 -5 -80 -12 -12 -12 -17 -134 -6 -162 5 -12 21 -16
+75 -16 65 0 70 -2 79 -26 15 -39 13 -396 -2 -416 -10 -13 -35 -17 -115 -20
+-56 -2 -104 -6 -107 -9 -12 -12 -18 -125 -7 -151 l11 -28 379 0 379 0 6 23 c9
+34 7 113 -4 141 l-10 26 -139 0 c-117 0 -140 2 -145 16 -12 31 -7 419 6 432 7
+7 43 12 93 12 50 0 86 5 93 12 16 16 16 139 0 161 -10 13 -33 17 -103 19 l-90
+3 -3 57 c-3 50 0 60 26 89 l28 32 125 4 c145 6 149 8 149 96 0 99 3 97 -168
+96 -95 -1 -163 -6 -192 -15z"/>
+                        <path d="M1215 3477 c-3 -12 -5 -52 -3 -87 l3 -65 72 -5 c39 -3 75 -9 80 -13
+9 -10 17 -646 8 -694 l-6 -31 -123 -4 c-69 -2 -128 -6 -132 -11 -13 -13 -16
+-120 -5 -149 l11 -28 379 0 379 0 6 23 c9 34 7 113 -4 141 -9 26 -10 26 -134
+26 -104 0 -125 3 -130 16 -3 9 -6 216 -6 460 l0 444 -195 0 c-194 0 -195 0
+-200 -23z"/>
+                        <path d="M4627 3494 c-4 -4 -7 -73 -7 -153 0 -156 -7 -185 -37 -164 -76 53
+-166 72 -275 59 -113 -14 -229 -124 -277 -261 -29 -81 -29 -247 -2 -327 27
+-79 44 -108 94 -164 112 -124 307 -150 441 -59 41 28 43 27 60 -7 11 -22 17
+-23 116 -23 l105 0 0 550 0 550 -106 3 c-58 1 -108 -1 -112 -4z m-107 -464
+c22 -11 52 -39 67 -62 27 -40 28 -47 28 -164 0 -122 0 -122 -31 -161 -45 -55
+-88 -77 -150 -77 -67 1 -106 26 -152 94 -35 53 -36 58 -36 145 0 73 4 98 21
+130 55 104 159 143 253 95z"/>
+                        <path d="M402 3230 c-154 -33 -273 -175 -293 -350 -35 -303 133 -509 413 -510
+130 0 225 33 306 105 57 51 94 119 96 174 l1 36 -107 3 -107 3 -25 -40 c-41
+-64 -80 -86 -157 -86 -56 0 -71 4 -102 28 -63 48 -81 96 -82 217 0 94 3 109
+24 143 13 22 42 52 64 68 33 24 50 29 99 29 75 0 110 -19 149 -82 l29 -48 104
+0 c115 0 121 3 109 63 -17 86 -93 176 -190 222 -51 24 -72 28 -173 31 -63 2
+-134 -1 -158 -6z"/>
+                        <path d="M2342 3230 c-57 -12 -136 -56 -181 -101 -90 -90 -132 -243 -110 -399
+32 -229 186 -360 424 -360 116 0 220 34 293 95 43 36 95 120 115 186 25 82 23
+247 -3 323 -40 112 -107 187 -209 234 -48 22 -72 26 -171 28 -63 2 -134 -1
+-158 -6z m216 -194 c34 -18 64 -51 88 -96 14 -27 18 -57 18 -136 0 -94 -2
+-103 -30 -149 -59 -95 -172 -122 -262 -62 -129 85 -121 357 12 438 38 23 134
+26 174 5z"/>
+                        <path d="M5283 3230 c-88 -19 -165 -76 -203 -151 -25 -48 -27 -146 -4 -192 46
+-91 97 -117 369 -186 97 -25 134 -55 119 -98 -20 -59 -137 -82 -219 -44 -48
+22 -70 46 -79 86 -4 16 -13 33 -19 37 -20 13 -182 9 -195 -4 -16 -16 -15 -28
+9 -94 52 -138 189 -215 382 -214 187 1 315 77 353 209 26 86 4 166 -60 224
+-54 49 -106 69 -274 103 -42 8 -96 24 -119 36 -37 17 -43 24 -43 51 0 18 4 37
+8 42 14 20 63 35 111 35 70 0 112 -21 140 -70 l23 -41 96 3 c95 3 97 3 100 28
+4 37 -32 112 -75 154 -21 20 -62 49 -91 63 -46 23 -68 26 -170 29 -64 2 -136
+-1 -159 -6z"/>
+                        <path d="M6255 3231 c-58 -11 -147 -56 -188 -96 -43 -42 -80 -113 -75 -146 3
+-23 6 -24 105 -27 l102 -3 26 40 c14 22 39 48 56 57 90 46 221 18 254 -55 9
+-21 15 -51 13 -67 l-3 -29 -115 -6 c-232 -13 -325 -51 -396 -163 -14 -22 -18
+-48 -18 -110 0 -71 4 -87 28 -129 49 -82 138 -127 252 -127 75 0 148 20 203
+54 44 28 56 26 63 -9 3 -18 11 -20 108 -20 l105 0 0 320 c0 318 0 320 -24 363
+-29 53 -96 110 -159 135 -52 21 -261 32 -337 18z m279 -507 c9 -4 16 -18 16
+-35 0 -21 -12 -38 -50 -71 -57 -50 -74 -56 -153 -57 -51 -1 -61 2 -82 25 -14
+15 -25 39 -25 54 0 31 43 76 80 83 39 7 197 8 214 1z"/>
+                        <path d="M8234 3230 c-107 -23 -212 -102 -257 -194 -38 -77 -50 -153 -44 -272
+4 -87 9 -111 36 -167 70 -146 208 -227 388 -227 136 0 249 39 321 111 47 47
+95 139 90 172 -3 21 -9 22 -110 25 l-107 3 -27 -40 c-70 -106 -250 -107 -319
+-2 -28 42 -43 115 -26 125 6 4 135 7 286 6 177 0 282 3 295 10 17 9 20 21 20
+72 0 119 -49 240 -123 304 -74 63 -117 76 -257 80 -69 2 -143 -1 -166 -6z
+m208 -180 c62 -18 113 -98 72 -114 -24 -9 -297 -7 -312 3 -12 7 -11 13 2 38
+35 68 139 100 238 73z"/>
+                        <path d="M3049 3209 c-8 -15 -10 -109 -7 -318 4 -331 7 -345 81 -428 94 -104
+282 -124 405 -42 54 37 67 36 81 -1 l10 -31 103 3 103 3 0 415 0 415 -90 3
+c-149 5 -134 34 -137 -266 l-3 -257 -30 -39 c-50 -66 -100 -96 -159 -96 -31 0
+-61 6 -75 16 -47 33 -51 64 -51 352 0 195 -3 271 -12 280 -8 8 -47 12 -110 12
+-89 0 -98 -2 -109 -21z"/>
+                        <path d="M6280 1892 l-95 -47 -3 -45 c-5 -90 -4 -89 -85 -92 l-72 -3 -3 -92
+-3 -93 69 0 c44 0 73 -5 80 -12 6 -8 12 -99 15 -218 2 -124 9 -221 16 -244 8
+-24 35 -61 69 -95 74 -73 105 -81 321 -81 193 0 181 -6 181 95 0 99 6 95 -134
+95 -137 0 -185 10 -206 42 -19 30 -28 364 -11 397 10 18 22 21 104 23 l92 3 3
+83 c3 81 2 82 -24 92 -14 6 -57 10 -95 9 -39 -1 -73 2 -77 6 -4 3 -9 56 -10
+116 -3 94 -6 109 -20 108 -10 0 -60 -21 -112 -47z"/>
+                        <path d="M4433 1711 c-34 -10 -78 -30 -98 -45 -39 -30 -65 -28 -65 3 0 11 -9
+25 -19 31 -22 11 -131 14 -180 4 l-31 -7 2 -411 3 -411 105 -3 c90 -2 107 0
+117 15 10 12 13 79 13 258 l0 242 28 39 c16 21 46 52 67 68 31 24 48 29 96 30
+47 1 62 -3 82 -22 41 -39 47 -82 47 -350 0 -138 3 -257 6 -266 5 -13 24 -16
+110 -16 92 0 104 2 114 19 14 26 13 472 -1 562 -6 39 -19 90 -30 114 -28 63
+-98 121 -177 145 -77 24 -108 24 -189 1z"/>
+                        <path d="M5294 1711 c-177 -43 -277 -160 -303 -351 -14 -99 1 -213 39 -292 55
+-117 166 -192 312 -211 212 -27 384 55 461 221 28 61 31 78 35 189 3 102 1
+132 -16 180 -50 151 -141 231 -299 267 -89 20 -138 19 -229 -3z m239 -220 c54
+-50 70 -96 71 -201 0 -86 -3 -100 -30 -150 -23 -43 -39 -60 -74 -77 -145 -71
+-280 34 -280 219 0 88 17 142 61 192 31 35 48 46 86 53 64 12 131 -2 166 -36z"/>
+                        <path d="M7276 1714 c-219 -49 -326 -188 -326 -424 0 -164 38 -256 143 -347
+73 -63 155 -88 292 -87 155 0 252 36 332 123 33 35 75 126 71 153 -3 22 -6 23
+-116 26 -109 3 -113 2 -122 -20 -36 -86 -165 -125 -255 -77 -59 32 -105 102
+-105 159 l0 30 293 0 c215 0 296 3 305 12 27 27 7 190 -33 271 -31 61 -65 100
+-119 134 -82 53 -242 74 -360 47z m195 -188 c47 -20 81 -59 77 -88 -3 -23 -5
+-23 -143 -26 -158 -3 -185 1 -185 26 0 75 154 129 251 88z"/>
+                        <path d="M8235 1711 c-159 -39 -235 -121 -235 -249 0 -76 18 -120 68 -163 47
+-42 103 -64 245 -99 141 -35 166 -46 186 -82 14 -24 14 -28 -4 -49 -41 -45
+-111 -60 -187 -39 -47 13 -98 56 -98 81 0 10 -9 28 -20 39 -17 17 -33 20 -98
+20 -105 0 -117 -9 -101 -75 24 -103 98 -179 207 -217 55 -18 88 -23 182 -22
+137 0 214 23 284 86 75 66 100 186 58 280 -36 81 -112 122 -299 159 -59 12
+-125 30 -145 41 -32 16 -38 23 -38 51 0 55 33 77 114 77 82 0 120 -19 147 -73
+l20 -38 97 3 97 3 3 29 c5 40 -28 103 -80 151 -57 53 -89 69 -175 89 -89 20
+-139 19 -228 -3z"/>
+                    </g>
+                </svg>
+            </header>
+            
+            <section class="usage-stats">
+                <article class="usage-item">
+                    <span>Files</span>
+                    <span id="files-count">0 / 1,000</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="files-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+                
+                <article class="usage-item" style="margin-top: 20px;">
+                    <span>Notes</span>
+                    <span id="notes-count">0 / 500</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="notes-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+                
+                <article class="usage-item" style="margin-top: 20px;">
+                    <span>Storage</span>
+                    <span id="storage-count">0 GB / 50 GB</span>
+                </article>
+                <progress class="usage-bar" value="0" max="100" id="storage-progress">
+                    <span class="usage-fill" style="width: 0%"></span>
+                </progress>
+            </section>
+        </aside>
+
+        <main class="main-content">
+            <header class="header">
+                <nav class="tabs">
+                    <button class="tab active" data-tab="storage">📁 Storage</button>
+                    <button class="tab" data-tab="notes">📝 Notes</button>
+                </nav>
+				
+                <section class="user-profile" id="user-profile">
+                    <figure class="user-avatar" id="user-avatar"></figure>
+                    <article class="user-info">
+                        <h2 class="user-name" id="user-name"></h2>
+                        <p class="user-email" id="user-email"></p>
+                    </article>
+                    <span class="dropdown-arrow">▼</span>
+                    
+                    <div class="dropdown-menu" id="dropdown-menu">
+                        <a class="dropdown-item danger" href="#" onclick="signOut(); return false;">
+                            <span>🚪</span>
+                            <span>Sign Out</span>
+                        </a>
+                    </div>
+                </section>
+            </header>
+
+            <section class="content-area">
+                <article class="tab-content active" id="storage">
+                    <input type="file" id="fileInput" style="display: none;" multiple>
+                    <button id="refreshFiles" style="display: none;">Refresh Files</button>
+                    <section class="storage-content">
+                        <!-- Empty state (shown when no files) -->
+                        <div id="empty-storage-state">
+                            <figure class="empty-icon">📁</figure>
+                            <h2 class="empty-state">Your storage is empty</h2>
+                            <p style="color: #9ca3af; margin-bottom: 20px;">
+                                Upload your first file to get started
+                            </p>
+                        </div>
+
+                        <!-- File list container (shown when files exist) -->
+                        <div id="file-list-container" style="display: none;">
+                            <div class="file-list-header">
+                                <h3>Your Files</h3>
+                                <div class="storage-stats">
+                                    <span id="storage-stats-text">0 files (0 GB used)</span>
+                                </div>
+                            </div>
+                            <div id="file-list"></div>
+                        </div>
+                        
+                        <button class="upload-btn" onclick="document.getElementById('fileInput').click()">Upload Files</button>
+                    </section>
+                </article>
+
+                <article class="tab-content" id="notes">
+                    <section class="notes-content">
+                        <figure class="empty-icon">📝</figure>
+                        <h2 class="empty-state">No notes yet</h2>
+                        <p style="color: #9ca3af; margin-bottom: 20px;">
+                            Create your first note to start organizing your thoughts
+                        </p>
+                        <button class="upload-btn" onclick="createNote()">Create Note</button>
+                    </section>
+					
+					    <!-- New populated notes section (initially hidden) -->
+					<section class="notes-populated" id="notesPopulated">
+						<!-- Notes Header -->
+						<div class="notes-header">
+							<input type="text" class="notes-search" placeholder="Search notes..." id="notesSearch" onkeyup="filterNotes()">
+							<button class="create-note-btn" onclick="openNoteEditor()">
+								<span>📝</span>
+								<span>New Note</span>
+							</button>
+						</div>
+
+						<!-- Notes Stats -->
+						<div class="notes-stats">
+							<span id="notesStatsText">0 notes</span>
+							<span id="notesStatsSize">0 KB used</span>
+						</div>
+
+						<!-- Notes Grid -->
+						<div class="notes-grid" id="notesGrid">
+							<!-- Notes will be populated here -->
+						</div>
+					</section>
+                </article>
+				
+				<!-- Note Editor Modal -->
+				<div class="note-modal" id="noteModal">
+					<div class="note-editor">
+						<div class="note-editor-header">
+							<h3 class="note-editor-title" id="noteEditorTitle">New Note</h3>
+							<button class="note-editor-close" onclick="closeNoteEditor()">×</button>
+						</div>
+						<div class="note-editor-body">
+							<div class="note-input-group">
+								<label class="note-input-label">Title</label>
+								<input type="text" class="note-title-input" id="noteTitleInput" placeholder="Enter note title..." maxlength="100">
+							</div>
+							<div class="note-input-group">
+								<label class="note-input-label">Content</label>
+								<textarea class="note-content-input" id="noteContentInput" placeholder="Start writing your note..."></textarea>
+							</div>
+						</div>
+						<div class="note-editor-footer">
+							<div class="note-meta-info" id="noteMetaInfo">
+								<span id="noteWordCount">0 words</span> • <span id="noteCharCount">0 characters</span>
+							</div>
+							<div class="note-editor-actions">
+								<button class="note-btn note-btn-secondary" onclick="closeNoteEditor()">Cancel</button>
+								<button class="note-btn note-btn-danger" id="deleteNoteBtn" onclick="deleteCurrentNote()" style="display: none;">Delete</button>
+								<button class="note-btn note-btn-primary" onclick="saveNote()">Save Note</button>
+							</div>
+						</div>
+					</div>
+				</div>
+            </section>
+        </main>
+    </div>
+</body>
+</html>
