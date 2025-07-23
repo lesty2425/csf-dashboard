@@ -1059,6 +1059,8 @@
     </style>
 	<script>
 	// ===== CONFIGURATION =====
+
+import { UserManager } from "oidc-client-ts";
 const CONFIG = {
     REGION: "ap-southeast-1",
     //USER_POOL_ID: "ap-southeast-1_2GP2VeU1m",
@@ -1067,6 +1069,11 @@ const CONFIG = {
     //IDENTITY_POOL_ID: "ap-southeast-1:5f8b5e35-654b-4902-8e76-00d179af197b",
     //REDIRECT_URI: "https://dev.d1mxo3duy7tqjb.amplifyapp.com/",
     //COGNITO_DOMAIN: "ap-southeast-12gp2veu1m.auth.ap-southeast-1.amazoncognito.com",
+	authority: "https://cognito-idp.ap-southeast-1.amazonaws.com/ap-southeast-1_bUSBqgZKm",
+    client_id: "1jq9a9lcapfdc0ij2l9o07lkki",
+    redirect_uri: "https://main.de2ygud7eqyin.amplifyapp.com/",
+    response_type: "code",
+    scope: "email openid phone"
     API_BASE_URL: "https://wnsje5z466.execute-api.ap-southeast-1.amazonaws.com/testing3"
 };
 
@@ -1543,6 +1550,13 @@ document.addEventListener('DOMContentLoaded', function() {
     <!-- window.location.href = logoutUrl; -->
 <!-- }; -->
 
+export async function signOutRedirect () {
+    const clientId = "1jq9a9lcapfdc0ij2l9o07lkki";
+    const logoutUri = "<logout uri>";
+    const cognitoDomain = "https://ap-southeast-1busbqgzkm.auth.ap-southeast-1.amazoncognito.com";
+    window.location.href = `${cognitoDomain}/logout?client_id=${clientId}&logout_uri=${encodeURIComponent(logoutUri)}`;
+};
+		
 window.downloadFile = downloadFile;
 window.deleteFile = deleteFile;
 
